@@ -1,3 +1,6 @@
+#ifndef TIMEENGINE_H
+#define TIMEENGINE_H
+
 #include <Arduino.h>
 #include "DataModels.h"
 
@@ -211,3 +214,5 @@ Time applyRepeatOffset(Event* event) {
 }
 
 }
+
+#endif
