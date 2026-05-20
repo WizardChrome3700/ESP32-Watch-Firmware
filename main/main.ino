@@ -1,5 +1,4 @@
 void setup() {
-
 }
 
 void loop() {
