@@ -17,6 +17,8 @@ class StorageManager {
     int8_t saveEvent(Event* event);
     int8_t deleteEventByID(uint16_t targetID);
     void printDebugState();
+    const Event* getEventsArray() const { return eventsArray_; }
+    uint16_t getTotalEvents() const { return calendarHeader_.totalEvents; }
 };
 
 int8_t StorageManager::initFS(bool format = false) {
