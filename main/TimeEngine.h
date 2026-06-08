@@ -4,6 +4,11 @@
 #include <Arduino.h>
 #include "DataModels.h"
 
+/**
+ * @namespace TimeEngine
+ * @brief Provides the functions that convert time to epochs, and back, perform addition and subtraction to time and more.
+ * @details 
+ */
 namespace TimeEngine
 {
 
