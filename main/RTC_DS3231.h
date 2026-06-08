@@ -2,11 +2,13 @@
 #define RTC_DS3231_H
 
 #include <Wire.h>
+#include "DataModels.h"
 
 #define DS3231_ADDR 0x68
 
 class RTC_DS3231 {
   public:
+  RTC_DS3231();
   RTC_DS3231(uint8_t sda, uint8_t scl) {
     this->scl = scl;
     this->sda = sda;
@@ -87,6 +89,23 @@ class RTC_DS3231 {
       day = bcdToDec(Wire.read());
       month = bcdToDec(Wire.read() & 0x1F);
       year = bcdToDec(Wire.read()) + 2000;
+    }
+  }
+
+  void getTime(Time &currentTime) {
+    Wire.beginTransmission(DS3231_ADDR);
+    Wire.write(0x00);
+    Wire.endTransmission(false);
+    uint8_t weekday; // Unused but required for reading the full time
+    Wire.requestFrom(DS3231_ADDR, 7);
+    if(Wire.available() >= 7) {
+      currentTime.sec = bcdToDec(Wire.read() & 0x7F);
+      currentTime.min = bcdToDec(Wire.read());
+      currentTime.hour = bcdToDec(Wire.read() & 0x3F);
+      uint8_t weekday = bcdToDec(Wire.read());
+      currentTime.date = bcdToDec(Wire.read());
+      currentTime.month = bcdToDec(Wire.read() & 0x1F);
+      currentTime.year = bcdToDec(Wire.read()) + 2000;
     }
   }
   
