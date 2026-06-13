@@ -21,13 +21,14 @@
 #include "TimeEngine.h"
 #include "AlarmManager.h"
 #include "driver/gpio.h"
+#include "OLED.h"
 
 #define RTC_PIN GPIO_NUM_2
-#define OK_BUTTON_PIN GPIO_NUM_5
-#define CANCEL_BUTTON_PIN GPIO_NUM_1
+#define OK_BUTTON_PIN GPIO_NUM_7
+#define CANCEL_BUTTON_PIN GPIO_NUM_9
 #define UP_BUTTON_PIN GPIO_NUM_6
-#define DOWN_BUTTON_PIN GPIO_NUM_7
-#define WIFI_BUTTON_PIN GPIO_NUM_8
+#define DOWN_BUTTON_PIN GPIO_NUM_8
+#define WIFI_BUTTON_PIN GPIO_NUM_23
 #define MOTOR_PIN GPIO_NUM_4
 
 class AppState {
@@ -55,9 +56,17 @@ class EventDetailState;
 
 class HomeState : public AppState {
 public:
+    Time current_time;
+    HomeState() {;}
+    HomeState(Time &currentTime) {
+        current_time = currentTime;
+    }
     void onEnter() override {
         // Draw the clock and battery on the OLED
         Serial.println("Print Time, Battery %, Date, current Event, number of missed events, timeout progress bar.");
+        printf("%d:%d:%d, %d/%d/%d\r\n", current_time.hour, current_time.min, current_time.sec, current_time.date, current_time.month, current_time.year);
+        uint32_t t = convertDate2Epoch(&current_time);
+        printf("t = %ld", t);
     }
 
     void onProgress() override {
@@ -74,13 +83,20 @@ public:
 
 class AlarmState : public AppState {
 public:
+    uint8_t x;
+    AlarmState() {
+        x = 1;
+    }
     void onEnter() override {
         Serial.println("Draw start frame of Alarm Screen animation.");
         analogWrite(MOTOR_PIN, 128);
     }
 
     void onProgress() override {
-        Serial.println("Update frame for animation.");
+        if(x) {
+            Serial.println("Update frame for animation.");
+            x = 0;
+        }
     }
 
     AppState* handleInput(uint8_t buttonPressed) override;
@@ -157,12 +173,15 @@ inline AppState* HomeState::handleInput(uint8_t buttonPressed) {
             Serial.println("Change event on the screen.");
             return this;
         }
+        if (buttonPressed == 6) {
+            return new AlarmState();
+        }
         return this; // No transition, stay on Home
     }
 
 inline AppState* AlarmState::handleInput(uint8_t buttonPressed) {
     if (buttonPressed == 1) {
-        return new HomeState(); // Transition to the WiFi screen
+        return new HomeState(); // Transition to the Home screen
     }
     return this; // No transition, stay on Home
 }
@@ -170,6 +189,9 @@ inline AppState* AlarmState::handleInput(uint8_t buttonPressed) {
 inline AppState* WifiState::handleInput(uint8_t buttonPressed) {
     if (buttonPressed == 2) {
         return new HomeState(); // Transition to the Home screen
+    }
+    if (buttonPressed == 6) {
+        return new AlarmState();
     }
     return this; // No transition, stay on WifiState
 }
@@ -190,6 +212,9 @@ inline AppState* EventListState::handleInput(uint8_t buttonPressed) {
         if (buttonPressed == 5) {
             return new WifiState();
         }
+        if (buttonPressed == 6) {
+            return new AlarmState();
+        }
         return this; // No transition, stay on EventListState
     }
 
@@ -208,6 +233,9 @@ inline AppState* EventDetailState::handleInput(uint8_t buttonPressed) {
         }
         if (buttonPressed == 5) {
             return new WifiState();
+        }
+        if (buttonPressed == 6) {
+            return new AlarmState();
         }
         return this; // No transition, stay on EventDetailState
     }
@@ -237,7 +265,7 @@ SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), screenTimeOut{timeout} {
     pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
     pinMode(UP_BUTTON_PIN, INPUT_PULLUP);
     pinMode(DOWN_BUTTON_PIN, INPUT_PULLUP);
-    pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(WIFI_BUTTON_PIN, INPUT_PULLUP);
     pinMode(RTC_PIN, INPUT_PULLUP);
     currentState = nullptr;
 }
@@ -332,11 +360,13 @@ void SystemCtrl::boot_handler() {
             rtc.getTime(currentTime);
             currentEpoch = convertDate2Epoch(&currentTime);
             alarmManager.rebuildQueue(storageManager.getEventsArray(), storageManager.getTotalEvents(), currentEpoch);
+            alarmManager.programNextAlarm(&rtc);
             currentState = new AlarmState();
             break;
         case 4:
             Serial.println("=== WOKE UP FROM OK BUTTON ===");
-            currentState = new HomeState();
+            rtc.getTime(currentTime);
+            currentState = new HomeState(currentTime);
             break;
     }
 }
@@ -376,6 +406,17 @@ uint8_t SystemCtrl::read_buttons() {
         if(digitalRead(WIFI_BUTTON_PIN) == LOW) {
             return 5;
         }
+    }
+    else if(digitalRead(RTC_PIN) == LOW) {
+        this->rtc.clearAlarm1();
+        // 2. Fetch the time and rebuild the queue to find the NEXT event
+        rtc.getTime(currentTime);
+        uint32_t currentEpoch = convertDate2Epoch(&currentTime);
+        alarmManager.rebuildQueue(storageManager.getEventsArray(), storageManager.getTotalEvents(), currentEpoch);
+        
+        // 3. Program the NEXT event into the RTC chip
+        alarmManager.programNextAlarm(&rtc);
+        return 6;
     }
     else {
         return 0;
