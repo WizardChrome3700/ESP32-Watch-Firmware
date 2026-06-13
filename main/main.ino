@@ -1,7 +1,9 @@
 #include "SystemCtrl.h"
 
+SystemCtrl sysctl(15000);
+
 void setup() {
-    SystemCtrl sysctl(15000);
+    Serial.begin(115200);
     sysctl.init();
     sysctl.boot_handler();
     sysctl.system_loop();
