@@ -4,8 +4,19 @@
 #include <SPI.h>
 #include <pgmspace.h>
 
+/**
+ * @class OLED
+ * @brief Driver application header for SH1106 128x64 OLED display controller.
+ * @details It is used to control the OLED display.
+ * - It initialises the OLED display according to SOP in https://cdn.sparkfun.com/assets/2/6/8/9/7/1.3inch-SH1106-OLED_Datasheet.pdf.
+ * - It updates the display by setting the page address, column number.
+ * - It also contains a library of graphics functions that draw basic shapes and ASCII characters.
+ */
 class OLED {
   public:
+  /**
+   * Constructor for OLED class
+   */
   OLED(uint8_t sck, uint8_t din, uint8_t cs, uint8_t dc, uint8_t res) {
     this->sck = sck;
     this->din = din;
@@ -14,6 +25,22 @@ class OLED {
     this->res = res;
   }
 
+  /**
+   * Initialises the OLED in the following order:-
+   * - Reset the OLED controller.
+   * - Initialises SPI controller of MCU.
+   * - Display OFF
+   * - set display clock frequency
+   * - set number of rows
+   * - set display offset
+   * - set start line number
+   * - enable charge pump
+   * - set COM scan direction
+   * - set contrast
+   * - set precharge period
+   * - Display ON
+   * - set display orientation
+   */
   void sh1106_init() {
     // Initialize pins
     pinMode(cs, OUTPUT);      // CS pin
@@ -64,6 +91,12 @@ class OLED {
     this->sh1106_command(0xAF);       // Display ON
   }
 
+  /**
+   * @details
+   * It updates all 8 pages of the display buffer. Display memory of SH1106 is of size 132x8 bytes.<br>
+   * When we write to the display since we have a 128x64 pixel display, we take a column offset of 2 bytes.<br>
+   * So we calculate the index for the display buffer as column + 2 + page * 132.
+   */
   void updateDisplay() {
     // Update all 8 pages (0-7)
     for (uint8_t page = 0; page < 8; page++) {
@@ -81,6 +114,9 @@ class OLED {
 
   // ==================== GRAPHICS FUNCTIONS ====================
 
+  /**
+   * @details It takes in the start and endpoint of the line segment.
+   */
   void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color) {
     int16_t dx = abs(x1 - x0);
     int16_t dy = abs(y1 - y0);
@@ -103,6 +139,9 @@ class OLED {
     }
   }
 
+  /**
+   * @details It draws an empty rectangle starting from the top left corner and using the height and width information.
+   */
   void drawRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color) {
     drawLine(x, y, x + w, y, color);
     drawLine(x, y + h, x + w, y + h, color);
@@ -110,6 +149,9 @@ class OLED {
     drawLine(x + w, y, x + w, y + h, color);
   }
 
+  /**
+   * @details It draws a filled rectangle starting from the top left corner and using the height and width information.
+   */
   void fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color) {
     for (int16_t i = x; i < x + w; i++) {
       for (int16_t j = y; j < y + h; j++) {
@@ -118,6 +160,9 @@ class OLED {
     }
   }
 
+  /**
+   * @details It draws an empty circle starting using the center and radius information.
+   */
   void drawCircle(int16_t x0, int16_t y0, uint8_t r, uint8_t color) {
     int16_t f = 1 - r;
     int16_t ddF_x = 1;
@@ -153,11 +198,17 @@ class OLED {
 
   // ==================== TEXT FUNCTIONS ====================
 
+  /**
+   * It is uesed to obtain the byte from the 8x6 memory unit table.
+   */
   uint8_t getFontByte(char c, uint8_t col) {
     if (c < 32 || c > 126) return 0;
     return pgm_read_byte(&font5x7[c - 32][col]);
   }
 
+  /**
+   * It is used to draw the byte in the 8x6 memory unit format.
+   */
   void drawChar(uint8_t x, uint8_t y, char c, uint8_t color) {
     if (c < 32 || c > 126) return;
     
@@ -171,6 +222,9 @@ class OLED {
     }
   }
 
+  /**
+   * It writes strings in left aligned format.
+   */
   void drawString(uint8_t x, uint8_t y, const char* text, uint8_t color) {
     uint8_t cursorX = x;
     while (*text) {
@@ -180,6 +234,9 @@ class OLED {
     }
   }
 
+  /**
+   * It writes strings in centered format.
+   */
   void drawStringCentered(uint8_t y, const char* text, uint8_t color) {
     uint8_t textLength = strlen(text);
     uint8_t textWidth = textLength * 6 - 1;
@@ -187,6 +244,9 @@ class OLED {
     drawString(x, y, text, color);
   }
 
+  /**
+   * It writes string in right aligned format.
+   */
   void drawStringRight(uint8_t y, const char* text, uint8_t color) {
     uint8_t textLength = strlen(text);
     uint8_t textWidth = textLength * 6 - 1;
@@ -194,6 +254,9 @@ class OLED {
     drawString(x, y, text, color);
   }
 
+  /**
+   * It writes string in screen wrapped format.
+   */
   void drawStringWrapped(uint8_t x, uint8_t y, const char* text, uint8_t color) {
     uint8_t cursorX = x;
     uint8_t cursorY = y;
@@ -214,6 +277,9 @@ class OLED {
     }
   }
 
+  /**
+   * It clears the display buffer stored in RAM.
+   */
   void clearBuffer() {
     memset(displayBuffer, 0, sizeof(displayBuffer));
   }
