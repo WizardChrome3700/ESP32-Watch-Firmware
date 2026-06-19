@@ -78,7 +78,9 @@ class AlarmManager {
          * @brief getter function for missed events queue.
          * @details It is used to optain number of missed events.
          */
+        uint8_t getAlarmCount() const { return queueSize_; }
         const AlarmNode* getMissedQueue() const { return missedQueue_; }
+        const AlarmNode* getAlarmQueue() const {return alarmQueue_; }
 };
 
 void AlarmManager::sortQueueChronologically(AlarmNode* queue, uint16_t queue_size) {
