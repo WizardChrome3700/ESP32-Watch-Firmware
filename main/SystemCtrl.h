@@ -17,6 +17,8 @@
 #define WIFI_BUTTON_PIN GPIO_NUM_23
 #define MOTOR_PIN GPIO_NUM_4
 
+RTC_DATA_ATTR uint32_t lastAlarmEpoch = 0;
+
 // Helper function to make the Serial Monitor act like a refreshing screen
 void clearConsole() {
     Serial.print("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"); 
@@ -28,6 +30,7 @@ struct AppContext {
     AlarmManager* alarm_manager;
     StorageManager* storage_manager;
     Time* currentTime;
+    uint32_t* lastAlarmEpoch;
     OLED* display;
 };
 
@@ -51,6 +54,7 @@ class EventDetailState;
 class HomeState : public AppState {
 private:
     uint8_t displayedEventIndex;
+    const Time* eventTime_pointer;
 public:
     HomeState(AppContext* app_context, uint8_t display_event_index) {
         this->app_context = app_context;
@@ -81,11 +85,18 @@ public:
             for(uint16_t i=0; i < totalEvents; i++) {
                 if (eventsArray[i].id == currentID) {
                     Serial.printf(" UPCOMING: %s\r\n", eventsArray[i].name);
+                    eventTime_pointer = &eventsArray[i].eventTime;
+                    this->app_context->display->drawStringCentered(47, eventsArray[i].name, 1);
                     break;
+                }
+                else {
+                    eventTime_pointer = nullptr;
                 }
             }
         } else {
             Serial.println(" UPCOMING: None");
+            eventTime_pointer = nullptr;
+            // this->app_context->display->drawStringCentered(47, "None", 1);
         }
         
         Serial.println("-----------------------------------------");
@@ -95,11 +106,50 @@ public:
             Serial.println(" No Missed Events.");
         }
         Serial.println("=========================================\r\n");
+        char missed_senc[13];
+        char battery_senc[5];
+        sprintf(missed_senc, "MISSED: %d", missedCount);
+        sprintf(battery_senc, "%d%%", 100);
+        this->app_context->display->drawStringRight(1, missed_senc, 1);
+        this->app_context->display->drawString(1, 1, battery_senc, 1);
+        this->app_context->display->drawStringCentered(37, "UPCOMING", 1);
+        this->app_context->display->drawStringCentered(48, "meeting with sir", 1); // WIP: to be removed
     }
 
-    void onProgress() override { return; }
+    void onProgress() override {
+        Time* t = app_context->currentTime;
+        char time_senc[9];
+        sprintf(time_senc, "%02d:%02d:%02d", t->hour, t->min, t->sec);
+        this->app_context->display->fillRect(34, 27, 54, 8, 0);
+        this->app_context->display->drawStringCentered(27, time_senc, 1);
+        this->app_context->display->drawLine(1, 62, 127, 62, 0);
+        if(eventTime_pointer == nullptr) {
+            this->app_context->display->drawLine(  1,  62,  10, 62, 1);
+            this->app_context->display->drawLine( 16,  62,  20, 62, 1);
+            this->app_context->display->drawLine( 26,  62,  30, 62, 1);
+            this->app_context->display->drawLine( 36,  62,  40, 62, 1);
+            this->app_context->display->drawLine( 46,  62,  50, 62, 1);
+            this->app_context->display->drawLine( 56,  62,  60, 62, 1);
+            this->app_context->display->drawLine( 66,  62,  70, 62, 1);
+            this->app_context->display->drawLine( 76,  62,  80, 62, 1);
+            this->app_context->display->drawLine( 86,  62,  90, 62, 1);
+            this->app_context->display->drawLine( 96,  62, 100, 62, 1);
+            this->app_context->display->drawLine(106,  62, 110, 62, 1);
+            this->app_context->display->drawLine(116,  62, 120, 62, 1);
+        }
+        else {
+            float progressBarLength = (float)(convertDate2Epoch(eventTime_pointer) - convertDate2Epoch(t))*127.0/(convertDate2Epoch(eventTime_pointer) - *(app_context->lastAlarmEpoch));
+            this->app_context->display->drawLine(1, 62, (uint8_t)progressBarLength, 62, 1);
+            Serial.println((uint8_t)progressBarLength);
+        }
+        this->app_context->display->updateDisplay();
+    }
     AppState* handleInput(uint8_t buttonPressed) override;
-    void onExit() override { Serial.println("Clear screen"); }
+    void onExit() override {
+        Serial.println("Clear screen");
+        this->app_context->display->clearBuffer();
+        this->app_context->display->updateDisplay();
+    }
 };
 
 class AlarmState : public AppState {
@@ -118,6 +168,7 @@ public:
         Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         Serial.println(" (Motor Vibrating...)");
         analogWrite(MOTOR_PIN, 128);
+        lastAlarmEpoch = convertDate2Epoch(this->app_context->currentTime);
     }
 
     void onProgress() override {
@@ -372,6 +423,7 @@ class SystemCtrl {
     uint32_t screenTimeOut;
     AppContext appContext;
     uint32_t loopStart;
+    OLED display;
 
     public:
     SystemCtrl(uint32_t timeout);
@@ -382,7 +434,7 @@ class SystemCtrl {
     void shutdown_handler();
 };
 
-SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), screenTimeOut{timeout} {
+SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), display(22, 21, 18, 19, 20), screenTimeOut{timeout} {
     pinMode(OK_BUTTON_PIN, INPUT_PULLUP);
     pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
     pinMode(UP_BUTTON_PIN, INPUT_PULLUP);
@@ -393,12 +445,16 @@ SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), screenTimeOut{timeout} {
     appContext.alarm_manager = &alarmManager;
     appContext.rtc = &rtc;
     appContext.storage_manager = &storageManager;
+    appContext.display = &display;
+    appContext.lastAlarmEpoch = &lastAlarmEpoch;
 }
 
 void SystemCtrl::init() {
     rtc.begin();
     rtc.getTime(currentTime);
     appContext.currentTime = &currentTime;
+    display.sh1106_init();
+    display.clearBuffer();
     Serial.println("\r\n[SYSTEM] Booting...");
             
     if (storageManager.initFS() < 0) {
@@ -433,6 +489,7 @@ void SystemCtrl::boot_handler() {
             alarmManager.programNextAlarm(&rtc);
             Serial.printf("Total Events loaded: %d\r\n", storageManager.getTotalEvents());
             currentState = new HomeState(&appContext, 0);
+            lastAlarmEpoch = convertDate2Epoch(&currentTime);
             break;
         case 2:
             Serial.println("[SYSTEM] Woke up from RTC ALARM");
@@ -494,6 +551,7 @@ void SystemCtrl::system_loop() {
     gpio_hold_dis((gpio_num_t)RTC_PIN);
     loopStart = millis();
     while(millis() - loopStart < screenTimeOut) {
+        appContext.rtc->getTime(currentTime);
         uint8_t buttonPressed = this->read_buttons();
         currentState->onProgress();
         if(buttonPressed != 0) {
@@ -517,6 +575,9 @@ void SystemCtrl::system_loop() {
 }
 
 void SystemCtrl::shutdown_handler() {
+    // appContext.display->clearBuffer();
+    // appContext.display->updateDisplay();
+    appContext.display->sh1106_shutdown();
     Serial.println("\r\n[SYSTEM] Timeout reached. Entering Deep Sleep...");
     uint64_t wake_mask = (1ULL << RTC_PIN) | (1ULL << OK_BUTTON_PIN);
     esp_sleep_enable_ext1_wakeup(wake_mask, ESP_EXT1_WAKEUP_ANY_LOW);
