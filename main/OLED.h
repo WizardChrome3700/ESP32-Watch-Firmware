@@ -91,6 +91,10 @@ class OLED {
     this->sh1106_command(0xAF);       // Display ON
   }
 
+  void sh1106_shutdown() {
+    this->sh1106_command(0xAE);       // Display OFF
+  }
+
   /**
    * @details
    * It updates all 8 pages of the display buffer. Display memory of SH1106 is of size 132x8 bytes.<br>
