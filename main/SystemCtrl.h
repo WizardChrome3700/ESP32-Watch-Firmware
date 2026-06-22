@@ -140,7 +140,7 @@ public:
         else {
             float progressBarLength = (float)(convertDate2Epoch(eventTime_pointer) - convertDate2Epoch(t))*127.0/(convertDate2Epoch(eventTime_pointer) - *(app_context->lastAlarmEpoch));
             this->app_context->display->drawLine(1, 62, (uint8_t)progressBarLength, 62, 1);
-            Serial.println((uint8_t)progressBarLength);
+            // Serial.println((uint8_t)progressBarLength);
         }
         this->app_context->display->updateDisplay();
     }
@@ -155,10 +155,22 @@ public:
 class AlarmState : public AppState {
 private:
     uint8_t debug_print_limit;
+    AnimationHeader animHead;
+    File animFile;
+    uint32_t lastFrameTime;
+    uint8_t currentFrameIndex;
+    uint8_t* animFrame;
 public:
     AlarmState(AppContext* app_context) {
         this->app_context = app_context;
         debug_print_limit = 1;
+        lastFrameTime = millis();
+        animFile = LittleFS.open("/AlarmStateAnimation.bin", "r");
+        if(!animFile) {
+            Serial.println("unable to open UI file.");
+        }
+        currentFrameIndex = 0;
+        animFrame = nullptr;
     }
 
     void onEnter() override {
@@ -169,12 +181,33 @@ public:
         Serial.println(" (Motor Vibrating...)");
         analogWrite(MOTOR_PIN, 128);
         lastAlarmEpoch = convertDate2Epoch(this->app_context->currentTime);
+        if(animFile) {
+            animFile.read((uint8_t*)&animHead, sizeof(AnimationHeader));
+            animFrame = new uint8_t[(animHead.width * animHead.height) / 8];
+            Serial.printf("[SYSTEM] created animFrame with %d bytes.\r\n", (animHead.width * animHead.height) / 8);
+            animFile.read((uint8_t*)animFrame, sizeof((animHead.width * animHead.height) / 8));
+        }
     }
 
     void onProgress() override {
         if(debug_print_limit) {
             Serial.println("Update frame for animation.");
             debug_print_limit = 0;
+        }
+        if(!animFile || animFrame == nullptr) { Serial.println("file not opened or nullptr.");return; }
+        uint32_t currentFrameTime = millis();
+        if(currentFrameTime - lastFrameTime > animHead.frame_delay) {
+            lastFrameTime = currentFrameTime;
+            currentFrameIndex = (currentFrameIndex + 1) % animHead.frame_count;
+            animFile.seek(sizeof(AnimationHeader) + currentFrameIndex * ((animHead.width * animHead.height) / 8), SeekSet);
+            animFile.read((uint8_t*)animFrame, ((animHead.width * animHead.height) / 8));
+            Serial.printf("[SYSTEM] frame changed to %d\r\n", currentFrameIndex);
+        }
+        else {
+            this->app_context->display->clearBuffer();
+            this->app_context->display->drawFrame(1, 1, animFrame, &animHead.width, &animHead.height);
+            this->app_context->display->updateDisplay();
+            Serial.printf("[SYSTEM] drawing frame%d\r\n", currentFrameIndex);
         }
     }
 
@@ -328,10 +361,18 @@ inline AppState* AlarmState::handleInput(uint8_t buttonPressed) {
 
 inline void AlarmState::onExit() {
     analogWrite(MOTOR_PIN, 0);
+    this->app_context->display->clearBuffer();
+    this->app_context->display->updateDisplay();
     this->app_context->rtc->getTime(*(this->app_context->currentTime));
     uint32_t currentEpoch = convertDate2Epoch(this->app_context->currentTime);
     this->app_context->alarm_manager->rebuildQueue(this->app_context->storage_manager->getEventsArray(), this->app_context->storage_manager->getTotalEvents(), currentEpoch);
     this->app_context->alarm_manager->programNextAlarm(this->app_context->rtc);
+    if(animFile) {
+        animFile.close();
+        delete[] animFrame;
+        animFrame = nullptr;
+        Serial.println("freed allocated bytes.");
+    }
 }
 
 inline AppState* WifiState::handleInput(uint8_t buttonPressed) {
@@ -575,6 +616,9 @@ void SystemCtrl::system_loop() {
 }
 
 void SystemCtrl::shutdown_handler() {
+    if(currentState != nullptr) {
+        currentState->onExit();
+    }
     // appContext.display->clearBuffer();
     // appContext.display->updateDisplay();
     appContext.display->sh1106_shutdown();
