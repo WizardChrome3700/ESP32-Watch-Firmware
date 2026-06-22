@@ -103,4 +103,11 @@ typedef struct {
   uint8_t customRepeatDays;     // 1 byte (Bitmask for Mon-Sun)
 } __attribute__((packed)) Event;
 
+typedef struct {
+  uint16_t width;
+  uint16_t height;
+  uint8_t frame_count;
+  uint8_t frame_delay;
+} __attribute__((packed)) AnimationHeader;
+
 #endif
