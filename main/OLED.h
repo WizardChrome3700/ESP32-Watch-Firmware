@@ -200,6 +200,19 @@ class OLED {
     }
   }
 
+  void drawFrame(uint8_t x0, uint8_t y0, uint8_t* frame, uint16_t* width, uint16_t* height) {
+    for(uint16_t col = 0; col < (*width)*(*height)/8; col++) {
+      uint16_t deltaX = col % (*width);
+      uint16_t deltaY = (col / (*width)) * 8;
+      uint8_t colData = frame[col];
+      for(uint8_t bit = 0; bit < 8; bit++) {
+        if(colData & (1 << bit)) {
+          drawPixel(x0 + deltaX, y0 + deltaY + bit, 1);
+        }
+      }
+    }
+  }
+
   // ==================== TEXT FUNCTIONS ====================
 
   /**
