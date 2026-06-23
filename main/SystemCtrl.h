@@ -113,7 +113,7 @@ public:
         this->app_context->display->drawStringRight(1, missed_senc, 1);
         this->app_context->display->drawString(1, 1, battery_senc, 1);
         this->app_context->display->drawStringCentered(37, "UPCOMING", 1);
-        this->app_context->display->drawStringCentered(48, "meeting with sir", 1); // WIP: to be removed
+        // this->app_context->display->drawStringCentered(48, "meeting with sir", 1); // WIP: to be removed
     }
 
     void onProgress() override {
@@ -251,6 +251,8 @@ public:
         Serial.println("=========================================");
         Serial.println("           [ MISSED EVENTS ]             ");
         Serial.println("=========================================");
+        this->app_context->display->clearBuffer();
+        this->app_context->display->drawStringCentered(1, "MISSED ALARMS", 1);
         
         // Fetch dynamically!
         const Event* eventsArray = app_context->storage_manager->getEventsArray();
@@ -260,27 +262,52 @@ public:
         
         if (missedCount == 0) {
             Serial.println("  (List is empty)");
+            this->app_context->display->drawStringCentered(23, "No missed events.", 1);
         } else {
-            for(uint8_t i = 0; i < missedCount; i++) {
+            uint8_t loopCount = missedCount;
+            uint8_t displayLimit = 5;
+            for(uint8_t i = displayedEventIndex + 1; (loopCount > 0) && (displayLimit > 0); loopCount--) {
                 uint16_t j;
                 for(j = 0; j < totalEvents; j++) {
-                    if(missedQueue[i].eventID == eventsArray[j].id) break;
+                    if(missedQueue[i-1].eventID == eventsArray[j].id) break;
                 }
                 if(j < totalEvents) {
-                    if (i == displayedEventIndex) {
+                    if (i-1 == displayedEventIndex) {
                         Serial.printf(" -> %s (%02d:%02d)\r\n", eventsArray[j].name, eventsArray[j].eventTime.hour, eventsArray[j].eventTime.min);
+                        this->app_context->display->drawString(1, 10 + (i - 1 - displayedEventIndex)*10, ">", 1);
+                        this->app_context->display->drawString(7, 10 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
                     } else {
                         Serial.printf("    %s (%02d:%02d)\r\n", eventsArray[j].name, eventsArray[j].eventTime.hour, eventsArray[j].eventTime.min);
+                        // Explicitly cast to (int) to safely perform negative checks on unsigned variables
+                        if((int)i - 1 - (int)displayedEventIndex < 0) {
+                            // Added the '10 +' base offset
+                            this->app_context->display->drawString(7, 10 + (missedCount + i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
+                        } else {
+                            // Added the '10 +' base offset
+                            this->app_context->display->drawString(7, 10 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
+                        }
                     }
                 }
+                i = i + 1;
+                if(i == missedCount + 1) {
+                    i = 1;
+                }
+                displayLimit -= 1;
             }
         }
+        this->app_context->display->updateDisplay();
         Serial.println("=========================================\r\n");
     }
 
-    void onProgress() override { return; }
+    void onProgress() override { 
+        return;
+    }
     AppState* handleInput(uint8_t buttonPressed) override;
-    void onExit() override { Serial.println("Clear screen"); }
+    void onExit() override { 
+        Serial.println("Clear screen");
+        this->app_context->display->clearBuffer();
+        this->app_context->display->updateDisplay();
+    }
 };
 
 class EventDetailState : public AppState {
@@ -308,24 +335,38 @@ public:
 
     void onEnter() override {
         clearConsole();
+        this->app_context->display->clearBuffer();
         Serial.println("=========================================");
         Serial.println("           [ EVENT DETAILS ]             ");
         Serial.println("=========================================");
+        this->app_context->display->drawStringCentered(1, "EVENT DETAILS", 1);
         if(event_pointer != nullptr) {
             Serial.printf(" Name:    %s\r\n", event_pointer->name);
+            this->app_context->display->drawStringCentered(20, event_pointer->name, 1);
             Serial.printf(" Time:    %02d:%02d:%02d\r\n", event_pointer->eventTime.hour, event_pointer->eventTime.min, event_pointer->eventTime.sec);
+            char time_string[12];
+            sprintf(time_string, "%02d:%02d:%02d", event_pointer->eventTime.hour, event_pointer->eventTime.min, event_pointer->eventTime.sec);
+            this->app_context->display->drawString(1, 30, time_string, 1);
             Serial.printf(" Date:    %02d/%02d/%d\r\n", event_pointer->eventTime.date, event_pointer->eventTime.month, event_pointer->eventTime.year);
+            sprintf(time_string, "%02d/%02d/%02d", event_pointer->eventTime.date, event_pointer->eventTime.month, event_pointer->eventTime.year);
+            this->app_context->display->drawStringRight(30, time_string, 1);
             Serial.println("-----------------------------------------");
             Serial.printf(" Details: %s\r\n", event_pointer->details);
+            this->app_context->display->drawStringWrapped(1, 40, event_pointer->details, 1);
         } else {
             Serial.println(" Error: Event Not Found.");
         }
         Serial.println("=========================================\r\n");
+        this->app_context->display->updateDisplay();
     }
 
     void onProgress() override { return; }
     AppState* handleInput(uint8_t buttonPressed) override;
-    void onExit() override { Serial.println("Clear screen"); }
+    void onExit() override { 
+        Serial.println("Clear screen");
+        this->app_context->display->clearBuffer();
+        this->app_context->display->updateDisplay();
+    }
 };
 
 // ================= INPUT HANDLERS =================
