@@ -226,7 +226,7 @@ class OLED {
   /**
    * It is used to draw the byte in the 8x6 memory unit format.
    */
-  void drawChar(uint8_t x, uint8_t y, char c, uint8_t color) {
+  void drawChar(uint8_t x, uint8_t y, char c, int8_t color) {
     if (c < 32 || c > 126) return;
     
     for (uint8_t col = 0; col < 5; col++) {
