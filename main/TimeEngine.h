@@ -4,10 +4,40 @@
 #include <Arduino.h>
 #include "DataModels.h"
 
+/**
+ * @namespace TimeEngine
+ * @brief Provides the functions that convert time to epochs, and back, perform addition and subtraction to time and more.
+ * @details 
+ */
 namespace TimeEngine
 {
 
 uint32_t convertDate2Epoch(Time* t) {
+    // Days elapsed at the start of each month (non-leap year)
+    static const uint16_t monthDays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+    uint16_t year = t->year;
+    uint8_t month = t->month;
+    uint8_t date = t->date;
+    uint8_t hour = t->hour;
+    uint8_t min = t->min;
+    uint8_t sec = t->sec;
+
+    // Calculate total days from 1970 to the given year
+    uint32_t days = (year - 1970) * 365 + ((year - 1969) / 4); // Add leap years
+    // Add days for the months in the current year
+    days += monthDays[month - 1];
+    // Add one more day if it's a leap year and we're past February
+    if (month > 2 && (year % 4 == 0)) {
+        days += 1;
+    }
+    // Add days for the current month
+    days += (date - 1);
+    
+    // Convert total days to seconds and add time components
+    return (days * 86400UL) + (hour * 3600UL) + (min * 60UL) + sec;
+}
+
+uint32_t convertDate2Epoch(const Time* t) {
     // Days elapsed at the start of each month (non-leap year)
     static const uint16_t monthDays[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
     uint16_t year = t->year;

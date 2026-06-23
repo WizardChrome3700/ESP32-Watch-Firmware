@@ -11,12 +11,36 @@
 
 using namespace TimeEngine;
 
+/**
+ * @struct AlarmNode
+ * @brief AlarmNode struct that stores the details of an event in the alarm queue.
+ * @details It consists of:-
+ * - eventID: It is the ID of the event stored in memory.
+ * - triggerEpoch: It is the time since epoch (1 Jan 1970) at which the alarm is to be triggered.
+ * - isReminder: It stores whether the alarm is the true alarm of an event or it's preemptive reminder.
+ */
 struct AlarmNode {
+    /**
+     * It is the ID of the event stored in memory.
+     */
     uint16_t eventID;
+    /**
+     * It is the time since epoch (1 Jan 1970) at which the alarm is to be triggered.
+     */
     uint32_t triggerEpoch; 
+    /**
+     * It stores whether the alarm is the true alarm of an event or it's preemptive reminder. Stores <b>True</b> for reminder and <b>False</b> for true event.
+     */
     bool isReminder;       // true = pre-emption warning, false = main event
 };
 
+/**
+ * @class AlarmManager
+ * @brief It is used to manage alarm operation for events stored in memory.
+ * @details It is reponsible for the following actions:-
+ * - It maintains a list of event alarms/reminders
+ * - It is used to program the RTC module with the alarm time of event.
+ */
 class AlarmManager {
     private:
         // The Future Queue
@@ -30,14 +54,33 @@ class AlarmManager {
 
     public:
         // Core Engine
+        /**
+         * @brief It rebuilds the alarm queue based on current time and events array from memory.
+         * @details 
+         * - It takes in the events array obtained from the EEPROM memory, total number of events and the current time since epoch.
+         * - Then it prepares a list of events that fall from the current time since epoch to the day end time since epoch.
+         * - This list is prepared along side the missing events list. Missed events are defined as event alarms/reminders that fall in the grace period of 2 mins before current time. This is for the contingency of events unacknowledged during a power blackout.
+         */
         void rebuildQueue(const Event* eventsArray, uint16_t totalEvents, uint32_t currentEpoch);
         // RTC Interfacing
+        /**
+         * @brief It is used to program to the RTC module to trigger alarm for an event.
+         * @details It takes the event at index zero of alarm queue and sends the time of the event to the alarm registers of the RTC module.
+         */
         void programNextAlarm(RTC_DS3231* rtc);
         // UI Handoffs
+        /**
+         * @brief It is used to obtain the number of missed events.
+         * @details It is used to obtain the number of missed events.
+         */
         uint8_t getMissedCount() const { return missedCount_; }
+        /**
+         * @brief getter function for missed events queue.
+         * @details It is used to optain number of missed events.
+         */
+        uint8_t getAlarmCount() const { return queueSize_; }
         const AlarmNode* getMissedQueue() const { return missedQueue_; }
-        // Sanity Checks
-        void printQueueDebug();
+        const AlarmNode* getAlarmQueue() const {return alarmQueue_; }
 };
 
 void AlarmManager::sortQueueChronologically(AlarmNode* queue, uint16_t queue_size) {
