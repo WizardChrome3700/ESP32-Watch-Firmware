@@ -3,6 +3,7 @@
 
 #include <Wire.h>
 #include "DataModels.h"
+#include "TimeEngine.h"
 
 #define DS3231_ADDR 0x68
 
@@ -88,6 +89,22 @@ class RTC_DS3231 {
     Wire.write(decToBcd(day));
     Wire.write(decToBcd(month));
     Wire.write(decToBcd(year % 100));
+    
+    Wire.endTransmission();
+  }
+
+
+  void setTime(Time* t) {
+    Wire.beginTransmission(DS3231_ADDR);
+    Wire.write(0x00);
+    
+    Wire.write(decToBcd(t->sec));
+    Wire.write(decToBcd(t->min));
+    Wire.write(decToBcd(t->hour)); // 24-hour mode assumed
+    Wire.write(decToBcd(TimeEngine::getDayOfWeek(t)));
+    Wire.write(decToBcd(t->date));
+    Wire.write(decToBcd(t->month));
+    Wire.write(decToBcd(t->year % 100));
     
     Wire.endTransmission();
   }
