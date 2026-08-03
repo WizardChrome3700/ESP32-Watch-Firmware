@@ -75,6 +75,7 @@ public:
         sendCommand(CMD_SYNC);
         delayMicroseconds(4); // t11 delay
         sendCommand(CMD_WAKEUP);
+        delayMicroseconds(1050);
         
         return readADCData();
     }
