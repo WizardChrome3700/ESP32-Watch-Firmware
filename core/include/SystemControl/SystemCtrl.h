@@ -93,7 +93,7 @@ inline AppState* CalendarHomeState::handleInput(uint8_t buttonPressed) {
     if(buttonPressed == 1) {
         // FIX 2: Add Bounds check so it refuses to transition if the queue is empty
         if(this->app_context->alarm_managetAlarmCount() > displayedEventIndex) {
-            return new EventDetailState(this-r->ge>app_context, this->app_context->alarm_manager->getAlarmQueue()[displayedEventIndex].eventID);
+            return new EventDetailState(this->app_context, this->app_context->alarm_manager->getAlarmQueue()[displayedEventIndex].eventID);
         }
         return this;
     }
@@ -295,6 +295,7 @@ void SystemCtrl::init() {
     display.ssd1306_init();
     display.clearBuffer();
     Serial.println("\r\n[SYSTEM] Booting...");
+    // Show message on display instead
             
     if (storageManager.initFS() < 0) {
         ESP_LOGE("SYS", "LittleFS mount failed. Forcing format...");
@@ -394,6 +395,7 @@ uint8_t SystemCtrl::read_buttons() {
         vTaskDelay(pdMS_TO_TICKS(50));
         if(digitalRead(WIFI_BUTTON_PIN) == LOW) { return 5; }
     }
+    // Change from Wifi to BLE and make switching to BLE a settings option not a hardware option
     else if(digitalRead(RTC_PIN) == LOW) {
         this->appContext.rtc->clearAlarm1();
         return 6;
@@ -424,13 +426,13 @@ void SystemCtrl::system_loop() {
             const char* btnNames[] = {"NONE", "OK", "CANCEL", "UP", "DOWN", "WIFI", "RTC_ALARM"};
             Serial.printf("[INPUT] Button Registered: %s (%d)\r\n", btnNames[buttonPressed], buttonPressed);
             
-            while(this->read_buttons() == buttonPressed) { 
-                vTaskDelay(pdMS_TO_TICKS(10));
-                if ((esp_timer_get_time() / 1000) - lastRefresh >= 33) {
-                    currentState->onProgress(); 
-                    lastRefresh = esp_timer_get_time() / 1000;
-                }
-            }
+            // while(this->read_buttons() == buttonPressed) { 
+            //     vTaskDelay(pdMS_TO_TICKS(10));
+            //     if ((esp_timer_get_time() / 1000) - lastRefresh >= 33) {
+            //         currentState->onProgress(); 
+            //         lastRefresh = esp_timer_get_time() / 1000;
+            //     }
+            // }
             AppState* nextState = currentState->handleInput(buttonPressed);
             if(nextState != currentState) {
                 currentState->onExit();
