@@ -4,10 +4,12 @@
 
 #include "driver/uart.h"
 #include "GPIO.h"
+#include <cstdio>  // Required for vsprintf
+#include <cstdarg> // Required for va_list, va_start, va_end
 
 #define EX_UART_NUM      UART_NUM_2
-#define TXD_PIN          (GPIO_NUM_1)
-#define RXD_PIN          (GPIO_NUM_2)
+#define TXD_PIN          (GPIO_NUM_43)
+#define RXD_PIN          (GPIO_NUM_44)
 #define RX_BUF_SIZE      (1024)
 
 class SerialComms {
@@ -18,7 +20,8 @@ class SerialComms {
     SerialComms();
     void begin(uint32_t baud_rate);
     void write(const char* data);
-    
+    void println(const char* data);
+    void printf(const char* format, ...);
     void flush();
     void end();
     int available();

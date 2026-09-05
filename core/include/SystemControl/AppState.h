@@ -20,10 +20,10 @@
 #define RTC_PIN           GPIO_NUM_2   // Safe: Top Right header
 
 // --- UI BUTTONS ---
-#define OK_BUTTON_PIN     GPIO_NUM_11  // Safe: Bottom Right header
-#define CANCEL_BUTTON_PIN GPIO_NUM_12  // Safe: Bottom Right header
-#define UP_BUTTON_PIN     GPIO_NUM_13  // Safe: Bottom Right header
-#define DOWN_BUTTON_PIN   GPIO_NUM_10  // Safe: Bottom Left header
+#define OK_BUTTON_PIN     GPIO_NUM_12  // Safe: Bottom Right header
+#define CANCEL_BUTTON_PIN GPIO_NUM_10  // Safe: Bottom Right header
+#define UP_BUTTON_PIN     GPIO_NUM_11  // Safe: Bottom Right header
+#define DOWN_BUTTON_PIN   GPIO_NUM_13  // Safe: Bottom Left header
 #define WIFI_BUTTON_PIN   GPIO_NUM_9  // Safe: Bottom Left header
 
 // --- ACTUATORS ---

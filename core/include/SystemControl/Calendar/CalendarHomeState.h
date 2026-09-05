@@ -73,7 +73,7 @@ public:
 
     void onProgress() override {
         Time* t = app_context->currentTime;
-        char time_senc[9];
+        char time_senc[16];
         // char time_senc[9] = "12:00:00"; 
         sprintf(time_senc, "%02d:%02d:%02d", t->hour, t->min, t->sec);
         this->app_context->display->fillRect(34, 27, 54, 8, 0);

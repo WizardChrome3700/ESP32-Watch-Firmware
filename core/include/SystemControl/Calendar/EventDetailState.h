@@ -37,7 +37,7 @@ public:
             Serial.printf(" Name:    %s\r\n", event_pointer->name);
             this->app_context->display->drawStringCentered(20, event_pointer->name, 1);
             Serial.printf(" Time:    %02d:%02d:%02d\r\n", event_pointer->eventTime.hour, event_pointer->eventTime.min, event_pointer->eventTime.sec);
-            char time_string[12];
+            char time_string[16];
             sprintf(time_string, "%02d:%02d:%02d", event_pointer->eventTime.hour, event_pointer->eventTime.min, event_pointer->eventTime.sec);
             this->app_context->display->drawString(1, 30, time_string, 1);
             Serial.printf(" Date:    %02d/%02d/%d\r\n", event_pointer->eventTime.date, event_pointer->eventTime.month, event_pointer->eventTime.year);

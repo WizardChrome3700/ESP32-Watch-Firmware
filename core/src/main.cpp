@@ -89,6 +89,8 @@ void task_core0_system(void *pvParameters) {
     // It now lives exclusively in Core 0's task stack.
     SystemCtrl sysctl(15000);
 
+    Serial.begin(115200);
+
     // 4. The Cold Boot Sequence (Runs strictly ONCE)
     sysctl.init();
     sysctl.boot_handler();

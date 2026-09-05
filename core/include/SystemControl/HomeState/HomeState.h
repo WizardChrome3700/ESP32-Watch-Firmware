@@ -38,7 +38,7 @@ public:
         }
     }
     void onProgress() override {
-        this->app_context->display->updateDisplay();
+        // this->app_context->display->updateDisplay();
     }
     AppState* handleInput(uint8_t buttonPressed) override;
     void onExit() override {

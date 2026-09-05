@@ -28,34 +28,34 @@ class GestureState;
 // ================= INPUT HANDLERS =================
 
 inline AppState* HomeState::handleInput(uint8_t buttonPressed) {
-    if(buttonPressed == 1) {
-        switch(this->cursorIndex) {
-            case 0:
-            return new CalendarHomeState(this->app_context, 0);
-            case 1:
-            return new Settings(this->app_context);
-            default:
-            return this;
-        }
-    }
-    else if(buttonPressed == 2) { return this; }
-    else if(buttonPressed == 3) {
-        if(cursorIndex == 0) {
-            cursorIndex = sizeof(this->appCount) - 1;
-        }
-        else {
-            cursorIndex--;
-        }
-        this->onEnter();
-        return this;
-    }
-    else if(buttonPressed == 4) {
-        cursorIndex = (cursorIndex + 1) % appCount;
-        this->onEnter();
-        return this;
-    }
-    else if(buttonPressed == 5) { return this; }
-    else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
+    // if(buttonPressed == 1) {
+    //     switch(this->cursorIndex) {
+    //         case 0:
+    //         return new CalendarHomeState(this->app_context, 0);
+    //         case 1:
+    //         return new Settings(this->app_context);
+    //         default:
+    //         return this;
+    //     }
+    // }
+    // else if(buttonPressed == 2) { return this; }
+    // else if(buttonPressed == 3) {
+    //     if(cursorIndex == 0) {
+    //         cursorIndex = sizeof(this->appCount) - 1;
+    //     }
+    //     else {
+    //         cursorIndex--;
+    //     }
+    //     this->onEnter();
+    //     return this;
+    // }
+    // else if(buttonPressed == 4) {
+    //     cursorIndex = (cursorIndex + 1) % appCount;
+    //     this->onEnter();
+    //     return this;
+    // }
+    // else if(buttonPressed == 5) { return this; }
+    // else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
     return this;
 }
 
@@ -92,7 +92,7 @@ inline AppState* Settings::handleInput(uint8_t buttonPressed) {
 inline AppState* CalendarHomeState::handleInput(uint8_t buttonPressed) {
     if(buttonPressed == 1) {
         // FIX 2: Add Bounds check so it refuses to transition if the queue is empty
-        if(this->app_context->alarm_managetAlarmCount() > displayedEventIndex) {
+        if(this->app_context->alarm_manager->getAlarmCount() > displayedEventIndex) {
             return new EventDetailState(this->app_context, this->app_context->alarm_manager->getAlarmQueue()[displayedEventIndex].eventID);
         }
         return this;
@@ -251,9 +251,9 @@ AppState* GestureRecordState::handleInput(uint8_t buttonPressed) {
 class SystemCtrl {
     private:
     Time currentTime;
-    // RTC_DS3231 rtc;
+    RTC_DS3231 rtc;
     StorageManager storageManager;
-    // AlarmManager alarmManager;
+    AlarmManager alarmManager;
     esp_sleep_wakeup_cause_t wakeup_reason;
     uint32_t wakeup_mask;
     uint8_t boot_state;
@@ -272,8 +272,8 @@ class SystemCtrl {
     void shutdown_handler();
 };
 
-// SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), screenTimeOut{timeout}, display(7, 15, 6, 5, 4) {
-SystemCtrl::SystemCtrl(uint32_t timeout) : screenTimeOut{timeout}, display(7, 15, 6, 5, 4) {
+SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(38, 39), screenTimeOut{timeout}, display(7, 15, 6, 5, 4) {
+// SystemCtrl::SystemCtrl(uint32_t timeout) : screenTimeOut{timeout}, display(7, 15, 6, 5, 4) {
     pinMode(OK_BUTTON_PIN, INPUT_PULLUP);
     pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
     pinMode(UP_BUTTON_PIN, INPUT_PULLUP);
@@ -352,7 +352,8 @@ void SystemCtrl::boot_handler() {
             currentEpoch = convertDate2Epoch(&currentTime);
             alarmManager.rebuildQueue(storageManager.getEventsArray(), storageManager.getTotalEvents(), currentEpoch);
             alarmManager.programNextAlarm(&rtc);
-            currentState = new AlarmState(&appContext);
+            // currentState = new AlarmState(&appContext);
+            currentState = new HomeState(&appContext, 0);
             break;
         case 4:
             Serial.println("[SYSTEM] Woke up from OK BUTTON");

@@ -30,6 +30,42 @@ void SerialComms::write(const char* data) {
     uart_write_bytes(EX_UART_NUM, (const char *) data, len);
 }
 
+void SerialComms::println(const char* data) {
+    uint8_t len = 0;
+    for(len = 0; *(data + len) != '\0'; len++);
+    uart_write_bytes(EX_UART_NUM, (const char *) data, len);
+    uart_write_bytes(EX_UART_NUM, "\r\n", 2);
+}
+
+
+void SerialComms::printf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    // 1. Use vsnprintf (with an 'n') to safely count required length
+    int len = vsnprintf(NULL, 0, format, args);
+    
+    va_end(args); 
+    va_start(args, format);
+
+    if (len > 0) {
+        char* buffer = (char*)malloc(len + 1);
+        
+        if (buffer != NULL) {
+            // 2. Use vsnprintf (with an 'n') to safely format with size constraints
+            vsnprintf(buffer, len + 1, format, args);
+            
+            uart_write_bytes(EX_UART_NUM, buffer, len);
+            
+            free(buffer);
+        }
+    }
+    
+    va_end(args);
+}
+
+
+
 void SerialComms::flush() {
     // Blocks execution until the TX hardware FIFO is completely empty
     uart_wait_tx_done(EX_UART_NUM, portMAX_DELAY);
