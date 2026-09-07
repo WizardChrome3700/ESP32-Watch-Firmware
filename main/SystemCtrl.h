@@ -7,14 +7,21 @@
 #include "TimeEngine.h"
 #include "AlarmManager.h"
 #include "driver/gpio.h"
-#include "OLED.h"
+// #include "OLED.h"
+#include "SSD1306.h"
 
 #define RTC_PIN GPIO_NUM_2
-#define OK_BUTTON_PIN GPIO_NUM_7
-#define CANCEL_BUTTON_PIN GPIO_NUM_9
-#define UP_BUTTON_PIN GPIO_NUM_6
-#define DOWN_BUTTON_PIN GPIO_NUM_8
-#define WIFI_BUTTON_PIN GPIO_NUM_23
+#define OK_BUTTON_PIN GPIO_NUM_12
+// #define OK_BUTTON_PIN GPIO_NUM_7
+// #define CANCEL_BUTTON_PIN GPIO_NUM_9
+#define CANCEL_BUTTON_PIN GPIO_NUM_10
+// #define UP_BUTTON_PIN GPIO_NUM_6
+#define UP_BUTTON_PIN GPIO_NUM_11
+// #define DOWN_BUTTON_PIN GPIO_NUM_8
+#define DOWN_BUTTON_PIN GPIO_NUM_13
+// #define WIFI_BUTTON_PIN GPIO_NUM_23
+#define WIFI_BUTTON_PIN GPIO_NUM_42
+// #define MOTOR_PIN GPIO_NUM_4
 #define MOTOR_PIN GPIO_NUM_4
 
 RTC_DATA_ATTR uint32_t lastAlarmEpoch = 0;
@@ -31,7 +38,7 @@ struct AppContext {
     StorageManager* storage_manager;
     Time* currentTime;
     uint32_t* lastAlarmEpoch;
-    OLED* display;
+    SSD1306* display;
 };
 
 class AppState {
@@ -190,25 +197,25 @@ public:
     }
 
     void onProgress() override {
-        if(debug_print_limit) {
-            Serial.println("Update frame for animation.");
-            debug_print_limit = 0;
-        }
-        if(!animFile || animFrame == nullptr) { Serial.println("file not opened or nullptr.");return; }
-        uint32_t currentFrameTime = millis();
-        if(currentFrameTime - lastFrameTime > animHead.frame_delay) {
-            lastFrameTime = currentFrameTime;
-            currentFrameIndex = (currentFrameIndex + 1) % animHead.frame_count;
-            animFile.seek(sizeof(AnimationHeader) + currentFrameIndex * ((animHead.width * animHead.height) / 8), SeekSet);
-            animFile.read((uint8_t*)animFrame, ((animHead.width * animHead.height) / 8));
-            Serial.printf("[SYSTEM] frame changed to %d\r\n", currentFrameIndex);
-        }
-        else {
-            this->app_context->display->clearBuffer();
-            this->app_context->display->drawFrame(1, 1, animFrame, &animHead.width, &animHead.height);
-            this->app_context->display->updateDisplay();
-            Serial.printf("[SYSTEM] drawing frame%d\r\n", currentFrameIndex);
-        }
+        // if(debug_print_limit) {
+        //     Serial.println("Update frame for animation.");
+        //     debug_print_limit = 0;
+        // }
+        // if(!animFile || animFrame == nullptr) { Serial.println("file not opened or nullptr.");return; }
+        // uint32_t currentFrameTime = millis();
+        // if(currentFrameTime - lastFrameTime > animHead.frame_delay) {
+        //     lastFrameTime = currentFrameTime;
+        //     currentFrameIndex = (currentFrameIndex + 1) % animHead.frame_count;
+        //     animFile.seek(sizeof(AnimationHeader) + currentFrameIndex * ((animHead.width * animHead.height) / 8), SeekSet);
+        //     animFile.read((uint8_t*)animFrame, ((animHead.width * animHead.height) / 8));
+        //     Serial.printf("[SYSTEM] frame changed to %d\r\n", currentFrameIndex);
+        // }
+        // else {
+        //     this->app_context->display->clearBuffer();
+        //     this->app_context->display->drawFrame(1, 1, animFrame, &animHead.width, &animHead.height);
+        //     this->app_context->display->updateDisplay();
+        //     Serial.printf("[SYSTEM] drawing frame%d\r\n", currentFrameIndex);
+        // }
     }
 
     AppState* handleInput(uint8_t buttonPressed) override;
@@ -505,7 +512,7 @@ class SystemCtrl {
     uint32_t screenTimeOut;
     AppContext appContext;
     uint32_t loopStart;
-    OLED display;
+    SSD1306 display;
 
     public:
     SystemCtrl(uint32_t timeout);
@@ -516,7 +523,8 @@ class SystemCtrl {
     void shutdown_handler();
 };
 
-SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), display(22, 21, 18, 19, 20), screenTimeOut{timeout} {
+// SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(15, 14), display(22, 21, 18, 19, 20), screenTimeOut{timeout} {
+SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(38, 39), display(7, 15, 6, 5, 4), screenTimeOut{timeout} {
     pinMode(OK_BUTTON_PIN, INPUT_PULLUP);
     pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
     pinMode(UP_BUTTON_PIN, INPUT_PULLUP);
@@ -535,7 +543,8 @@ void SystemCtrl::init() {
     rtc.begin();
     rtc.getTime(currentTime);
     appContext.currentTime = &currentTime;
-    display.sh1106_init();
+    display.ssd1306_init();
+    display.ssd1306_init();
     display.clearBuffer();
     Serial.println("\r\n[SYSTEM] Booting...");
             
@@ -662,10 +671,12 @@ void SystemCtrl::shutdown_handler() {
     }
     // appContext.display->clearBuffer();
     // appContext.display->updateDisplay();
-    appContext.display->sh1106_shutdown();
+    appContext.display->ssd1306_shutdown();
     Serial.println("\r\n[SYSTEM] Timeout reached. Entering Deep Sleep...");
-    uint64_t wake_mask = (1ULL << RTC_PIN) | (1ULL << OK_BUTTON_PIN);
-    esp_sleep_enable_ext1_wakeup(wake_mask, ESP_EXT1_WAKEUP_ANY_LOW);
+    // Change or replace the old mask function with individual assignments:
+      // Use the standard function name, passing the low-trigger mode integer (2) directly
+    uint64_t wake_mask = (1ULL << GPIO_NUM_4) | (1ULL << GPIO_NUM_5);
+    esp_sleep_enable_ext1_wakeup(wake_mask, (esp_sleep_ext1_wakeup_mode_t)2); 
     gpio_hold_en((gpio_num_t)RTC_PIN);
     gpio_hold_en((gpio_num_t)OK_BUTTON_PIN);
     pinMode(MOTOR_PIN, OUTPUT);
