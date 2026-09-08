@@ -15,6 +15,7 @@
 #include "SystemControl/Settings/GestureRecord/GestureRecordState.h"
 #include "SystemControl/Settings/GestureRecord/GestureSyncState.h"
 
+extern SemaphoreHandle_t spi_mutex;
 
 class HomeState;
 class CalendarHomeState;
@@ -28,34 +29,36 @@ class GestureState;
 // ================= INPUT HANDLERS =================
 
 inline AppState* HomeState::handleInput(uint8_t buttonPressed) {
-    // if(buttonPressed == 1) {
-    //     switch(this->cursorIndex) {
-    //         case 0:
-    //         return new CalendarHomeState(this->app_context, 0);
-    //         case 1:
-    //         return new Settings(this->app_context);
-    //         default:
-    //         return this;
-    //     }
-    // }
-    // else if(buttonPressed == 2) { return this; }
-    // else if(buttonPressed == 3) {
-    //     if(cursorIndex == 0) {
-    //         cursorIndex = sizeof(this->appCount) - 1;
-    //     }
-    //     else {
-    //         cursorIndex--;
-    //     }
-    //     this->onEnter();
-    //     return this;
-    // }
-    // else if(buttonPressed == 4) {
-    //     cursorIndex = (cursorIndex + 1) % appCount;
-    //     this->onEnter();
-    //     return this;
-    // }
-    // else if(buttonPressed == 5) { return this; }
-    // else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
+    if(buttonPressed == 1) {
+        switch(this->cursorIndex) {
+            case 0:
+            return new CalendarHomeState(this->app_context, 0);
+            case 1:
+            return new Settings(this->app_context);
+            default:
+            return this;
+        }
+    }
+    else if(buttonPressed == 2) { return this; }
+    else if(buttonPressed == 3) {
+        if(cursorIndex == 0) {
+            cursorIndex = (this->appCount) - 1;
+        }
+        else {
+            cursorIndex--;
+        }
+        Serial.printf("cursor index: %d, app count: %d\r\n", cursorIndex, appCount);
+        this->onEnter();
+        return this;
+    }
+    else if(buttonPressed == 4) {
+        cursorIndex = (cursorIndex + 1) % appCount;
+        Serial.printf("cursor index: %d, app count: %d\r\n", cursorIndex, appCount);
+        this->onEnter();
+        return this;
+    }
+    else if(buttonPressed == 5) { return this; }
+    else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
     return this;
 }
 
@@ -71,16 +74,16 @@ inline AppState* Settings::handleInput(uint8_t buttonPressed) {
         }
     }
     else if(buttonPressed == 3){//UP Button
-        if(cursorIndex > 0){
-            cursorIndex--;
-            this->onEnter();
-        }
+        cursorIndex = (cursorIndex + 1) % appCount;
+        Serial.printf("cursor index: %d, app count: %d\r\n", cursorIndex, appCount);
+        this->onEnter();
+        return this;
     }
     else if(buttonPressed == 4){//DOWN Button
-        if(cursorIndex < TOTAL_ITEMS - 1){
-            cursorIndex++;
-            this->onEnter();
-        }
+        cursorIndex = (cursorIndex + appCount - 1) % appCount;
+        Serial.printf("cursor index: %d, app count: %d\r\n", cursorIndex, appCount);
+        this->onEnter();
+        return this;
     }
     else if(buttonPressed == 2) {
         return new HomeState(this->app_context, 0);
@@ -212,24 +215,24 @@ inline AppState* EventDetailState::handleInput(uint8_t buttonPressed) {
 inline AppState* GestureState::handleInput(uint8_t buttonPressed) {
     if(buttonPressed == 1) {
         // 1. Check if the cursor is on the last option ("USB Sync")
-        if (cursor_index == 5) {
+        if (cursorIndex == 5) {
             return new GestureSyncState(this->app_context);
         } 
         // 2. Otherwise, start recording the selected gesture
         else {
-            return new GestureRecordState(this->app_context, labels[cursor_index]); 
+            return new GestureRecordState(this->app_context, labels[cursorIndex]); 
         }
     }
     else if(buttonPressed == 2) { return new Settings(this->app_context); }
     else if(buttonPressed == 3) { 
         uint8_t label_count = sizeof(labels)/sizeof(labels[0]);
-        cursor_index = (cursor_index + 1) % label_count;
+        cursorIndex = (cursorIndex + 1) % label_count;
         this->onEnter();
         return this;
     }
     else if(buttonPressed == 4) {
         uint8_t label_count = sizeof(labels)/sizeof(labels[0]);
-        cursor_index = (cursor_index + label_count - 1) % label_count;
+        cursorIndex = (cursorIndex + label_count - 1) % label_count;
         this->onEnter();
         return this;
     }
@@ -240,6 +243,7 @@ inline AppState* GestureState::handleInput(uint8_t buttonPressed) {
 
 AppState* GestureRecordState::handleInput(uint8_t buttonPressed) {
     // Button 2 (CANCEL) or the 3-second timeout will trigger the exit
+    Serial.printf("button_pressed: %d\r\n", buttonPressed);
     if(buttonPressed == 2) { 
         return new GestureState(this->app_context); 
     }
@@ -262,6 +266,8 @@ class SystemCtrl {
     AppContext appContext;
     uint32_t loopStart;
     SSD1306 display;
+    AppState* stateStack[5];    // Holds up to 5 nested menus
+    uint8_t stackPointer;       // Tracks your depth
 
     public:
     SystemCtrl(uint32_t timeout);
@@ -286,6 +292,9 @@ SystemCtrl::SystemCtrl(uint32_t timeout) : rtc(38, 39), screenTimeOut{timeout}, 
     appContext.storage_manager = &storageManager;
     appContext.display = &display;
     appContext.lastAlarmEpoch = &lastAlarmEpoch;
+    currentState = nullptr;
+    stackPointer = 0;
+    for(int i=0; i<5; i++) stateStack[i] = nullptr;
 }
 
 void SystemCtrl::init() {
@@ -376,32 +385,38 @@ void SystemCtrl::boot_handler() {
 }
 
 uint8_t SystemCtrl::read_buttons() {
-    if(digitalRead(OK_BUTTON_PIN) == LOW) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        if(digitalRead(OK_BUTTON_PIN) == LOW) { return 1; }
-    }
-    else if(digitalRead(CANCEL_BUTTON_PIN) == LOW) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        if(digitalRead(CANCEL_BUTTON_PIN) == LOW) { return 2; }
-    }
-    else if(digitalRead(UP_BUTTON_PIN) == LOW) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        if(digitalRead(UP_BUTTON_PIN) == LOW) { return 3; }
-    }
-    else if(digitalRead(DOWN_BUTTON_PIN) == LOW) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        if(digitalRead(DOWN_BUTTON_PIN) == LOW) { return 4; }
-    }
-    else if(digitalRead(WIFI_BUTTON_PIN) == LOW) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-        if(digitalRead(WIFI_BUTTON_PIN) == LOW) { return 5; }
-    }
-    // Change from Wifi to BLE and make switching to BLE a settings option not a hardware option
+    // 1. Static variables keep their values between function calls
+    static uint32_t lastDebounceTime = 0;
+    static uint8_t lastButtonState = 0;
+    
+    // 2. Read the raw hardware states instantly without pausing
+    uint8_t currentButton = 0;
+    if(digitalRead(OK_BUTTON_PIN) == LOW) currentButton = 1;
+    else if(digitalRead(CANCEL_BUTTON_PIN) == LOW) currentButton = 2;
+    else if(digitalRead(UP_BUTTON_PIN) == LOW) currentButton = 3;
+    else if(digitalRead(DOWN_BUTTON_PIN) == LOW) currentButton = 4;
+    else if(digitalRead(WIFI_BUTTON_PIN) == LOW) currentButton = 5;
     else if(digitalRead(RTC_PIN) == LOW) {
         this->appContext.rtc->clearAlarm1();
-        return 6;
+        currentButton = 6;
     }
-    return 0;
+
+    // 3. The Non-Blocking Filter
+    // If the button changed (pressed or released), reset the timer
+    if (currentButton != lastButtonState) {
+        lastDebounceTime = esp_timer_get_time() / 1000;
+    }
+
+    // 4. Update the state tracker for the next frame
+    lastButtonState = currentButton;
+
+    // 5. If the button has been held steady for 50ms, it is a valid press!
+    if ((esp_timer_get_time() / 1000) - lastDebounceTime > 50) {
+        return currentButton;
+    }
+
+    // If we haven't reached 50ms, return 0 (no valid press yet)
+    return 0; 
 }
 
 void SystemCtrl::system_loop() {
@@ -415,31 +430,38 @@ void SystemCtrl::system_loop() {
     loopStart = esp_timer_get_time() / 1000;
     uint32_t lastRefresh = esp_timer_get_time() / 1000;
     while(esp_timer_get_time() / 1000 - loopStart < screenTimeOut) {
-        // appContext.rtc->getTime(currentTime);
+        appContext.rtc->getTime(currentTime);
         uint8_t buttonPressed = this->read_buttons();
         // ADD THIS: Rate Limit the UI rendering to ~30Hz (33ms)
         uint32_t now = esp_timer_get_time() / 1000;
         if (now - lastRefresh >= 33) {
-            currentState->onProgress();
+            if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                currentState->onProgress();
+                xSemaphoreGive(spi_mutex);
+            }
             lastRefresh = now;
         }
         if(buttonPressed != 0) {
             const char* btnNames[] = {"NONE", "OK", "CANCEL", "UP", "DOWN", "WIFI", "RTC_ALARM"};
             Serial.printf("[INPUT] Button Registered: %s (%d)\r\n", btnNames[buttonPressed], buttonPressed);
             
-            // while(this->read_buttons() == buttonPressed) { 
-            //     vTaskDelay(pdMS_TO_TICKS(10));
-            //     if ((esp_timer_get_time() / 1000) - lastRefresh >= 33) {
-            //         currentState->onProgress(); 
-            //         lastRefresh = esp_timer_get_time() / 1000;
-            //     }
-            // }
+            while(this->read_buttons() == buttonPressed) { 
+                vTaskDelay(pdMS_TO_TICKS(10));
+                if ((esp_timer_get_time() / 1000) - lastRefresh >= 33) {
+                    currentState->onProgress(); 
+                    lastRefresh = esp_timer_get_time() / 1000;
+                }
+            }
             AppState* nextState = currentState->handleInput(buttonPressed);
             if(nextState != currentState) {
-                currentState->onExit();
-                delete currentState;
-                currentState = nextState;
-                currentState->onEnter();
+                // Lock the bus for the heavy menu transitions
+                if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+                    currentState->onExit();
+                    delete currentState;
+                    currentState = nextState;
+                    currentState->onEnter();
+                    xSemaphoreGive(spi_mutex);
+                }
             }
             loopStart = esp_timer_get_time() / 1000;
         }
@@ -471,17 +493,30 @@ void SystemCtrl::shutdown_handler() {
     gpio_hold_dis((gpio_num_t)RTC_PIN);
     gpio_hold_dis((gpio_num_t)OK_BUTTON_PIN);
 
-    // 1. Re-evaluate the wakeup reason
+    // 1. RESTORE INTERNAL PULL-UPS (The fix for the infinite loop)
+    pinMode(OK_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(CANCEL_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(UP_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(DOWN_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(WIFI_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(RTC_PIN, INPUT_PULLUP);
+
+    // 2. TRAP THE WAKEUP PRESS (Prevents immediate false clicks)
+    while(digitalRead(OK_BUTTON_PIN) == LOW) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    // 3. Re-evaluate the wakeup reason
     uint64_t wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
     
     boot_state = 0; // Clear old state
     boot_state |= ((wakeup_pin_mask & (1ULL << RTC_PIN)) > 0) << 1;         
     boot_state |= ((wakeup_pin_mask & (1ULL << OK_BUTTON_PIN)) > 0) << 2;  
 
-    // 2. Call your safe boot_handler!
+    // 4. Call your safe boot_handler!
     this->boot_handler();
 
-    // 3. Power up the screen
+    // 5. Power up the screen
     appContext.display->ssd1306_init();
     appContext.display->clearBuffer();
     appContext.display->updateDisplay();

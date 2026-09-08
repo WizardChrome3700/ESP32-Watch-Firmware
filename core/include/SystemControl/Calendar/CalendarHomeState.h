@@ -17,7 +17,8 @@ public:
 
     void onEnter() override {
         clearConsole();
-        
+        this->app_context->display->clearBuffer();
+        Serial.println("CalendarHomestate entered.");
         // Fetch fresh data directly from the system context
         Time* t = app_context->currentTime;
         uint8_t alarmCount = app_context->alarm_manager->getAlarmCount();
@@ -27,7 +28,7 @@ public:
         uint8_t missedCount = app_context->alarm_manager->getMissedCount();
 
         Serial.println("=========================================");
-        Serial.println("             [ HOME SCREEN ]             ");
+        Serial.println("         [ CALENDAR HOME SCREEN ]        ");
         Serial.println("=========================================");
         Serial.printf(" TIME: %02d:%02d:%02d\r\n", t->hour, t->min, t->sec);
         Serial.printf(" DATE: %02d/%02d/%d\r\n", t->date, t->month, t->year);
@@ -69,6 +70,7 @@ public:
         this->app_context->display->drawString(1, 1, battery_senc, 1);
         this->app_context->display->drawStringCentered(37, "UPCOMING", 1);
         // this->app_context->display->drawStringCentered(48, "meeting with sir", 1); // WIP: to be removed
+        
     }
 
     void onProgress() override {

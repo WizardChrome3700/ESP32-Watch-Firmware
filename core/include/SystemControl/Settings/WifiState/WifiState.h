@@ -11,6 +11,7 @@ public:
 
     void onEnter() override {
         clearConsole();
+        this->app_context->display->clearBuffer();
         Serial.println("=========================================");
         Serial.println("             [ WIFI MODULE ]             ");
         Serial.println("=========================================");

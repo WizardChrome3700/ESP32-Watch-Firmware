@@ -15,7 +15,7 @@ public:
 
     void onEnter() override {
         clearConsole();
-        
+        this->app_context->display->clearBuffer();
         this->app_context->display->clearBuffer();
         this->app_context->display->drawStringCentered(20, "USB SYNC", 1);
         this->app_context->display->drawStringCentered(40, "Waiting for PC...", 1);

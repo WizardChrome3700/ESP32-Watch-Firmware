@@ -27,6 +27,7 @@ public:
 
     void onEnter() override {
         clearConsole();
+        this->app_context->display->clearBuffer();
         Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         Serial.println("!!             ALARM RINGING           !!");
         Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");

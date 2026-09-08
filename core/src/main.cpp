@@ -9,6 +9,7 @@
 // }
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "SystemCtrl.h"
@@ -16,6 +17,7 @@
 
 QueueHandle_t adc_data_queue = NULL;
 volatile bool is_recording_gesture = false;
+SemaphoreHandle_t spi_mutex = NULL;
 
 // =========================================================================
 // CORE 1 TASK: The ADC Polling Sandbox
@@ -33,40 +35,41 @@ void task_core1_adc(void *pvParameters) {
     while(true) {
         // Only burn CPU cycles reading the SPI bus if we actually need the data
         if (is_recording_gesture) {
-            
-            // Sweep all 8 channels (ensure your ADS1256 driver multiplexes correctly)
-            for(uint8_t i = 0; i < 8; i++) {
-                switch (i)
-                {
-                case 1:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 2:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 3:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 4:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 5:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 6:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 7:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                case 8:
-                    current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                    break;
-                default:
-                    break;
+            if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                // Sweep all 8 channels (ensure your ADS1256 driver multiplexes correctly)
+                for(uint8_t i = 0; i < 8; i++) {
+                    switch (i)
+                    {
+                    case 1:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 2:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 3:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 4:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 5:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 6:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 7:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    case 8:
+                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
+                        break;
+                    default:
+                        break;
+                    }
                 }
+                xSemaphoreGive(spi_mutex);
             }
-            
             // Shove the complete 8-channel frame into the queue.
             // Timeout is 0. If the queue is full (Core 0 is too slow writing to flash), 
             // we intentionally drop the frame to keep Core 1 running at top speed.
@@ -87,21 +90,21 @@ void task_core1_adc(void *pvParameters) {
 void task_core0_system(void *pvParameters) {
     // 3. Instantiate the SystemCtrl object locally. 
     // It now lives exclusively in Core 0's task stack.
-    SystemCtrl sysctl(15000);
+    SystemCtrl* sysctl = new SystemCtrl(15000);
 
     Serial.begin(115200);
 
     // 4. The Cold Boot Sequence (Runs strictly ONCE)
-    sysctl.init();
-    sysctl.boot_handler();
+    sysctl->init();
+    sysctl->boot_handler();
 
     // 5. The Permanent Execution Lifecycle
     while(true) {
         // Runs until screenTimeOut is reached
-        sysctl.system_loop();
+        sysctl->system_loop();
         
         // Drops into Light Sleep. CPU freezes here until woken by a button.
-        sysctl.shutdown_handler();
+        sysctl->shutdown_handler();
     }
 }
 
@@ -109,6 +112,7 @@ void task_core0_system(void *pvParameters) {
 // THE KERNEL LAUNCHER
 // =========================================================================
 extern "C" void app_main() {
+    spi_mutex = xSemaphoreCreateMutex(); // 2. Instantiate it
     // 6. Create the queue before launching the tasks
     adc_data_queue = xQueueCreate(20, sizeof(AdcFrame));
 

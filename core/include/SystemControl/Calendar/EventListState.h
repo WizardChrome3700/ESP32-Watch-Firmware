@@ -41,17 +41,17 @@ public:
                 if(j < totalEvents) {
                     if (i-1 == displayedEventIndex) {
                         // Serial.printf(" -> %s (%02d:%02d)\r\n", eventsArray[j].name, eventsArray[j].eventTime.hour, eventsArray[j].eventTime.min);
-                        this->app_context->display->drawString(1, 10 + (i - 1 - displayedEventIndex)*10, ">", 1);
-                        this->app_context->display->drawString(7, 10 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
+                        this->app_context->display->drawString(1, 15 + (i - 1 - displayedEventIndex)*10, ">", 1);
+                        this->app_context->display->drawString(7, 15 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
                     } else {
                         // Serial.printf("    %s (%02d:%02d)\r\n", eventsArray[j].name, eventsArray[j].eventTime.hour, eventsArray[j].eventTime.min);
                         // Explicitly cast to (int) to safely perform negative checks on unsigned variables
                         if((int)i - 1 - (int)displayedEventIndex < 0) {
                             // Added the '10 +' base offset
-                            this->app_context->display->drawString(7, 10 + (missedCount + i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
+                            this->app_context->display->drawString(7, 15 + (missedCount + i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
                         } else {
                             // Added the '10 +' base offset
-                            this->app_context->display->drawString(7, 10 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
+                            this->app_context->display->drawString(7, 15 + (i - 1 - displayedEventIndex)*10, eventsArray[j].name, 1);
                         }
                     }
                 }
