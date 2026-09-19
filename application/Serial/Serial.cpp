@@ -30,6 +30,10 @@ void SerialComms::write(const char* data) {
     uart_write_bytes(EX_UART_NUM, (const char *) data, len);
 }
 
+void SerialComms::writeBytes(const uint8_t* buffer, size_t size) {
+    uart_write_bytes(EX_UART_NUM, (const char*)buffer, size);
+}
+
 void SerialComms::println(const char* data) {
     uint8_t len = 0;
     for(len = 0; *(data + len) != '\0'; len++);

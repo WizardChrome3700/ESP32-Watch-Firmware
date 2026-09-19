@@ -23,67 +23,61 @@ SemaphoreHandle_t spi_mutex = NULL;
 // CORE 1 TASK: The ADC Polling Sandbox
 // =========================================================================
 void task_core1_adc(void *pvParameters) {
-    // 2. Instantiate the ADC object locally. 
-    // It now lives exclusively in Core 1's task stack.
-    ADS1256 adc(7, 15, 14, 10, ADS1256::DR_1000, ADS1256::GAIN_1);
-    
-    // Initialize hardware from Core 1
+    // 1. Instantiate the ADC object
+    ADS1256 adc(7, 15, 14, 10, ADS1256::DR_30000, ADS1256::GAIN_1);
     adc.init(false);
 
     AdcFrame current_frame;
+    
+    // 2. Add state trackers for the delta timer
+    bool was_recording = false;
+    uint32_t start_time_us = 0;
 
     while(true) {
-        // Only burn CPU cycles reading the SPI bus if we actually need the data
         if (is_recording_gesture) {
+            
+            // 3. Capture the exact starting microsecond once per recording
+            if (!was_recording) {
+                start_time_us = (uint32_t)esp_timer_get_time();
+                was_recording = true;
+            }
+
+            // 4. Stamp the frame with the elapsed delta time
+            current_frame.timestamp = (uint32_t)esp_timer_get_time() - start_time_us;
+
             if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                // Sweep all 8 channels (ensure your ADS1256 driver multiplexes correctly)
+                // Sweep all 8 channels sequentially
                 for(uint8_t i = 0; i < 8; i++) {
-                    switch (i)
-                    {
-                    case 1:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 2:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 3:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 4:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 5:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 6:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 7:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    case 8:
-                        current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0);
-                        break;
-                    default:
-                        break;
+                    switch (i) {
+                        case 0: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN0); break;
+                        case 1: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN1); break;
+                        case 2: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN2); break;
+                        case 3: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN3); break;
+                        case 4: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN4); break;
+                        case 5: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN5); break;
+                        case 6: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN6); break;
+                        case 7: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN7); break;
+                        default: break;
                     }
                 }
                 xSemaphoreGive(spi_mutex);
             }
-            // Shove the complete 8-channel frame into the queue.
-            // Timeout is 0. If the queue is full (Core 0 is too slow writing to flash), 
-            // we intentionally drop the frame to keep Core 1 running at top speed.
+            
+            // Send the 36-byte frame to the queue
             xQueueSend(adc_data_queue, &current_frame, 0);
-            // ADD THIS: Force Core 1 to yield for 1 RTOS tick (1ms) after every frame.
-            // This gives Core 0's OLED the tiny window it needs to slip in and grab the SPI mutex!
-            vTaskDelay(pdMS_TO_TICKS(1));
+            
+            // Yield the CPU to allow the OLED screen to update
+            taskYIELD();
+            
         } else {
+            // 5. Reset the state tracker when the recording stops
+            was_recording = false;
+            
             // If not recording, yield heavily so Core 1 can sleep
             vTaskDelay(pdMS_TO_TICKS(10)); 
         }
     }
 }
-
 // =========================================================================
 // CORE 0 TASK: The System & UI Sandbox
 // =========================================================================
@@ -114,7 +108,7 @@ void task_core0_system(void *pvParameters) {
 extern "C" void app_main() {
     spi_mutex = xSemaphoreCreateMutex(); // 2. Instantiate it
     // 6. Create the queue before launching the tasks
-    adc_data_queue = xQueueCreate(20, sizeof(AdcFrame));
+    adc_data_queue = xQueueCreate(100, sizeof(AdcFrame));
 
     // 7. Launch the Core 1 Task
     // Stack size is 8192 bytes. Ensure this is large enough to hold the ADS1256 object.

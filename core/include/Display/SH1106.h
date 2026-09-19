@@ -5,7 +5,7 @@
 // #include <pgmspace.h>
 
 /**
- * @class OLED
+ * @class SH1106
  * @brief Driver application header for SH1106 128x64 OLED display controller.
  * @details It is used to control the OLED display.
  * - It initialises the OLED display according to SOP in https://cdn.sparkfun.com/assets/2/6/8/9/7/1.3inch-SH1106-OLED_Datasheet.pdf.

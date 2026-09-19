@@ -4,17 +4,49 @@
 
 #include "AppState.h"
 
+/**
+ * @brief Home state of the Calendar application
+ * 
+ * @details It performs the following operations:-
+ * - It displays the current date and time.
+ * - It displays the event that is about to arrive and a progress bar that displays time left before the event arrives.
+ * - It displays number of missed events.
+ * - It displays the battery level.
+ */
 class CalendarHomeState : public AppState {
 private:
+    /**
+     * @brief index of event in the alarm queue.
+     * 
+     * @details index of event in the alarm queue.
+     */
     uint8_t displayedEventIndex;
+    /**
+     * @brief pointer to the time of the event being displayed.
+     * @details pointer to the time of the event being displayed.
+     */
     const Time* eventTime_pointer;
 public:
+    /**
+     * @brief Construct a new Calendar Home State object
+     * 
+     * @param app_context 
+     * @param display_event_index 
+     */
     CalendarHomeState(AppContext* app_context, uint8_t display_event_index) {
         this->app_context = app_context;
         this->displayedEventIndex = display_event_index;
         // FIX 3: No local copies of time or counts! We fetch dynamically on load.
     }
 
+    /**
+     * @brief Renders the home screen of the calendar application
+     * @details It performs the following operations:-
+     * - It displays the current date and time.
+     * - It displays the event that is about to arrive.
+     * - It displays number of missed events.
+     * - It displays the battery level.
+     */
     void onEnter() override {
         clearConsole();
         this->app_context->display->clearBuffer();
@@ -73,6 +105,14 @@ public:
         
     }
 
+    /**
+     * @brief Renders the progress bar on the display
+     * @details Implementation:-
+     * - It obtains the time epoch for the event and the time epoch of current time obtained from RTC.
+     * - It obtains the relative fraction of time till event time epoch is reached which is multiplied with display width.
+     * - In case there are no upcoming events it displays a dashed line.
+     * @note The hardcoding of the progress bar length needs to be rectified to be generalised.
+     */
     void onProgress() override {
         Time* t = app_context->currentTime;
         char time_senc[16];
@@ -103,6 +143,12 @@ public:
         this->app_context->display->updateDisplay();
     }
     AppState* handleInput(uint8_t buttonPressed) override;
+
+    /**
+     * @brief it is invoked to exit from the Calendar application
+     * @details Implementation:-
+     * - It clears the display.
+     */
     void onExit() override {
         Serial.println("Clear screen");
         this->app_context->display->clearBuffer();

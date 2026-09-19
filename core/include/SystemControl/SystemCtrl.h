@@ -39,7 +39,7 @@ inline AppState* HomeState::handleInput(uint8_t buttonPressed) {
             return this;
         }
     }
-    else if(buttonPressed == 2) { return this; }
+    else if(buttonPressed == 2) { return nullptr; }
     else if(buttonPressed == 3) {
         if(cursorIndex == 0) {
             cursorIndex = (this->appCount) - 1;
@@ -86,7 +86,7 @@ inline AppState* Settings::handleInput(uint8_t buttonPressed) {
         return this;
     }
     else if(buttonPressed == 2) {
-        return new HomeState(this->app_context, 0);
+        return nullptr;
     }
     else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
     return this;
@@ -100,7 +100,7 @@ inline AppState* CalendarHomeState::handleInput(uint8_t buttonPressed) {
         }
         return this;
     }
-    else if(buttonPressed == 2) { return new HomeState(this->app_context, 0); }
+    else if(buttonPressed == 2) { return nullptr; }
     else if(buttonPressed == 3) {
         uint8_t alarmCount = this->app_context->alarm_manager->getAlarmCount();
         if(alarmCount > 1) {
@@ -121,25 +121,9 @@ inline AppState* AlarmState::handleInput(uint8_t buttonPressed) {
     return this;
 }
 
-inline void AlarmState::onExit() {
-    analogWrite(MOTOR_PIN, 0);
-    this->app_context->display->clearBuffer();
-    this->app_context->display->updateDisplay();
-    this->app_context->rtc->getTime(*(this->app_context->currentTime));
-    uint32_t currentEpoch = convertDate2Epoch(this->app_context->currentTime);
-    this->app_context->alarm_manager->rebuildQueue(this->app_context->storage_manager->getEventsArray(), this->app_context->storage_manager->getTotalEvents(), currentEpoch);
-    this->app_context->alarm_manager->programNextAlarm(this->app_context->rtc);
-    if(animFile) {
-        animFile.close();
-        delete[] animFrame;
-        animFrame = nullptr;
-        Serial.println("freed allocated bytes.");
-    }
-}
-
 inline AppState* WifiState::handleInput(uint8_t buttonPressed) {
     if(buttonPressed == 1) { return this; }
-    else if(buttonPressed == 2) { return new CalendarHomeState(this->app_context, 0); }
+    else if(buttonPressed == 2) { return nullptr; }
     else if(buttonPressed == 6) { return new AlarmState(this->app_context); }
     return this;
 }
@@ -153,7 +137,7 @@ inline AppState* EventListState::handleInput(uint8_t buttonPressed) {
         }
         return this;
     }
-    else if(buttonPressed == 2) { return new CalendarHomeState(this->app_context, 0); }
+    else if(buttonPressed == 2) { return nullptr; }
     else if(buttonPressed == 3) {
         if(missed_event_count != 0) {
             displayedEventIndex = (displayedEventIndex + 1) % missed_event_count;
@@ -176,33 +160,34 @@ inline AppState* EventListState::handleInput(uint8_t buttonPressed) {
 inline AppState* EventDetailState::handleInput(uint8_t buttonPressed) {
     if(buttonPressed == 1) { return this; }
     else if(buttonPressed == 2) {
-        if (event_pointer == nullptr) return new CalendarHomeState(this->app_context, 0);
+        // if (event_pointer == nullptr) return new CalendarHomeState(this->app_context, 0);
 
-        Time event_time = event_pointer->eventTime;
-        uint8_t newDisplayedEventIndex = 0; 
+        // Time event_time = event_pointer->eventTime;
+        // uint8_t newDisplayedEventIndex = 0; 
         
-        if(compareDateTime(&event_time, this->app_context->currentTime) >= 0) {
-            const AlarmNode* alarmQueue = this->app_context->alarm_manager->getAlarmQueue();
-            uint8_t alarmQueueCount = this->app_context->alarm_manager->getAlarmCount();
-            for(uint8_t i = 0; i < alarmQueueCount; i++) {
-                if(alarmQueue[i].eventID == displayedEventID) {
-                    newDisplayedEventIndex = i;
-                    break;
-                }
-            }
-            return new CalendarHomeState(this->app_context, newDisplayedEventIndex);
-        }
-        else {
-            const AlarmNode* missedQueue = this->app_context->alarm_manager->getMissedQueue();
-            uint8_t missedQueueCount = this->app_context->alarm_manager->getMissedCount();
-            for(uint8_t i = 0; i < missedQueueCount; i++) {
-                if(missedQueue[i].eventID == displayedEventID) {
-                    newDisplayedEventIndex = i;
-                    break;
-                }
-            }
-            return new EventListState(this->app_context, newDisplayedEventIndex);
-        }
+        // if(compareDateTime(&event_time, this->app_context->currentTime) >= 0) {
+        //     const AlarmNode* alarmQueue = this->app_context->alarm_manager->getAlarmQueue();
+        //     uint8_t alarmQueueCount = this->app_context->alarm_manager->getAlarmCount();
+        //     for(uint8_t i = 0; i < alarmQueueCount; i++) {
+        //         if(alarmQueue[i].eventID == displayedEventID) {
+        //             newDisplayedEventIndex = i;
+        //             break;
+        //         }
+        //     }
+        //     return new CalendarHomeState(this->app_context, newDisplayedEventIndex);
+        // }
+        // else {
+        //     const AlarmNode* missedQueue = this->app_context->alarm_manager->getMissedQueue();
+        //     uint8_t missedQueueCount = this->app_context->alarm_manager->getMissedCount();
+        //     for(uint8_t i = 0; i < missedQueueCount; i++) {
+        //         if(missedQueue[i].eventID == displayedEventID) {
+        //             newDisplayedEventIndex = i;
+        //             break;
+        //         }
+        //     }
+        //     return new EventListState(this->app_context, newDisplayedEventIndex);
+        // }
+        return nullptr;
     }
     else if(buttonPressed == 3) { return this; }
     else if(buttonPressed == 4) { return this; }
@@ -223,7 +208,7 @@ inline AppState* GestureState::handleInput(uint8_t buttonPressed) {
             return new GestureRecordState(this->app_context, labels[cursorIndex]); 
         }
     }
-    else if(buttonPressed == 2) { return new Settings(this->app_context); }
+    else if(buttonPressed == 2) { return nullptr; }
     else if(buttonPressed == 3) { 
         uint8_t label_count = sizeof(labels)/sizeof(labels[0]);
         cursorIndex = (cursorIndex + 1) % label_count;
@@ -245,7 +230,7 @@ AppState* GestureRecordState::handleInput(uint8_t buttonPressed) {
     // Button 2 (CANCEL) or the 3-second timeout will trigger the exit
     Serial.printf("button_pressed: %d\r\n", buttonPressed);
     if(buttonPressed == 2) { 
-        return new GestureState(this->app_context); 
+        return nullptr;
     }
     return this;
 }
@@ -344,6 +329,15 @@ void SystemCtrl::boot_handler() {
         currentState = nullptr;
     }
 
+    // ADD THIS: Erase the menu history on wake-up to prevent pointer corruption
+    for(int i = 0; i < 5; i++) {
+        if(stateStack[i] != nullptr) {
+            delete stateStack[i];
+            stateStack[i] = nullptr;
+        }
+    }
+    stackPointer = 0;
+
     switch(boot_state) {
         case 1:
             Serial.println("[SYSTEM] Cold Boot (Battery Connected)");
@@ -432,6 +426,12 @@ void SystemCtrl::system_loop() {
     while(esp_timer_get_time() / 1000 - loopStart < screenTimeOut) {
         appContext.rtc->getTime(currentTime);
         uint8_t buttonPressed = this->read_buttons();
+
+        if (currentState->requestExit) {
+            buttonPressed = 2; 
+            currentState->requestExit = false;
+        }
+
         // ADD THIS: Rate Limit the UI rendering to ~30Hz (33ms)
         uint32_t now = esp_timer_get_time() / 1000;
         if (now - lastRefresh >= 33) {
@@ -448,19 +448,42 @@ void SystemCtrl::system_loop() {
             while(this->read_buttons() == buttonPressed) { 
                 vTaskDelay(pdMS_TO_TICKS(10));
                 if ((esp_timer_get_time() / 1000) - lastRefresh >= 33) {
-                    currentState->onProgress(); 
+                    if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                        currentState->onProgress(); 
+                        xSemaphoreGive(spi_mutex);
+                    }
                     lastRefresh = esp_timer_get_time() / 1000;
                 }
             }
             AppState* nextState = currentState->handleInput(buttonPressed);
-            if(nextState != currentState) {
-                // Lock the bus for the heavy menu transitions
-                if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-                    currentState->onExit();
-                    delete currentState;
-                    currentState = nextState;
-                    currentState->onEnter();
-                    xSemaphoreGive(spi_mutex);
+
+        if (nextState == currentState) {
+            // Do nothing
+        } 
+        else if (nextState == nullptr) { 
+            // The "BACK" Signal
+            if (stackPointer > 0) {
+                    if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+                        currentState->onExit();
+                        delete currentState;          
+                        stackPointer--;               
+                        currentState = stateStack[stackPointer]; 
+                        currentState->onEnter();      
+                        xSemaphoreGive(spi_mutex);
+                    }
+                }
+            } 
+            else { 
+                // The "FORWARD" Signal
+                if (stackPointer < 5) {
+                    if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+                        currentState->onExit();
+                        stateStack[stackPointer] = currentState; 
+                        stackPointer++;                          
+                        currentState = nextState;                
+                        currentState->onEnter();                 
+                        xSemaphoreGive(spi_mutex);
+                    }
                 }
             }
             loopStart = esp_timer_get_time() / 1000;
@@ -470,19 +493,24 @@ void SystemCtrl::system_loop() {
 }
 
 void SystemCtrl::shutdown_handler() {
-    if(currentState != nullptr) {
-        currentState->onExit();
+    if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if(currentState != nullptr) {
+            currentState->onExit();
+        }
+        appContext.display->clearBuffer();
+        appContext.display->updateDisplay();
+        appContext.display->ssd1306_shutdown();
+        xSemaphoreGive(spi_mutex);
     }
-    appContext.display->clearBuffer();
-    appContext.display->updateDisplay();
-    appContext.display->ssd1306_shutdown();
-    Serial.println("\r\n[SYSTEM] Timeout reached. Entering Light Sleep...");
+    Serial.printf("[SYSTEM] Timeout reached. Entering Light Sleep...\r\n");
+
     uint64_t wake_mask = (1ULL << RTC_PIN) | (1ULL << OK_BUTTON_PIN);
     esp_sleep_enable_ext1_wakeup(wake_mask, ESP_EXT1_WAKEUP_ANY_LOW);
     gpio_hold_en((gpio_num_t)RTC_PIN);
     gpio_hold_en((gpio_num_t)OK_BUTTON_PIN);
     pinMode(MOTOR_PIN, OUTPUT);
     digitalWrite(MOTOR_PIN, LOW);
+
     esp_light_sleep_start();
 
     // ==========================================

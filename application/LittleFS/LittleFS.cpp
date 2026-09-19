@@ -59,7 +59,7 @@ bool LittleFSFS::format() {
 }
 
 File LittleFSFS::open(const char* fileName, const char* mode) {
-    if (!basePath_ || !fileName) return File(NULL);
+    if (!basePath_ || !fileName) return File();
 
     size_t total_length = strlen(fileName) + strlen(basePath_) + 1;
     char* fullpath = new char[total_length];
@@ -67,9 +67,17 @@ File LittleFSFS::open(const char* fileName, const char* mode) {
     strcpy(fullpath, basePath_);
     strcat(fullpath, fileName);
 
+    if (strcmp(fileName, "/") == 0) {
+        DIR* dp = opendir(fullpath);
+        File f(dp, fullpath);
+        delete[] fullpath;
+        return f;
+    }
+
     FILE* fp = fopen(fullpath, mode);
+    File f(fp, (const char*)fullpath);
     delete[] fullpath; 
-    return File(fp);
+    return f;
 }
 
 bool LittleFSFS::exists(const char* fileName) {

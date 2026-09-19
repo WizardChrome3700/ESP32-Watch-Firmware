@@ -10,17 +10,29 @@
  * @details It uses bit packing to eliminate padding to minimize space occupied.
  */
 typedef struct {
-  /** valid years from 2000 to 2999, occupies 2 bytes */
+  /**
+   * @brief valid years from 2000 to 2999, occupies 2 bytes 
+   * @details valid years from 2000 to 2999, occupies 2 bytes */
   uint16_t year;
-  /** valid from 1 to 12 corresponding from January to December, occupies 1 byte */
+  /**
+   * @brief valid from 1 to 12 corresponding from January to December, occupies 1 byte 
+   * @details valid from 1 to 12 corresponding from January to December, occupies 1 byte */
   uint8_t month;
-  /** valid from 1 to last date of corresponding month, occupies 1 byte */
+  /**
+   * @brief valid from 1 to last date of corresponding month, occupies 1 byte 
+   * @details valid from 1 to last date of corresponding month, occupies 1 byte */
   uint8_t date;
-  /** valid from 0 to 23 following the 24-hour format, occupies 1 byte */
+  /**
+   * @brief valid from 0 to 23 following the 24-hour format, occupies 1 byte 
+   * @details valid from 0 to 23 following the 24-hour format, occupies 1 byte */
   uint8_t hour;
-  /** valid from 0 to 59, occupies 1 byte */
+  /**
+   * @brief valid from 0 to 59, occupies 1 byte 
+   * @details valid from 0 to 59, occupies 1 byte */
   uint8_t min;
-  /** valid from 0 to 59, occupies 1 byte */
+  /**
+   * @brief valid from 0 to 59, occupies 1 byte 
+   * @details valid from 0 to 59, occupies 1 byte */
   uint8_t sec;
 } __attribute__((packed)) Time;
 
@@ -103,10 +115,29 @@ typedef struct {
   uint8_t customRepeatDays;     // 1 byte (Bitmask for Mon-Sun)
 } __attribute__((packed)) Event;
 
+/**
+ * @brief Data structure to describe the contents of the animation assets file.
+ */
 typedef struct {
+  /**
+   * @brief width of frame
+   * @details width of frame
+   */
   uint16_t width;
+  /**
+   * @brief height of frame
+   * @details height of frame
+   */
   uint16_t height;
+  /**
+   * @brief number of frames in the assests file
+   * @details number of frames in the assests file
+   */
   uint8_t frame_count;
+  /**
+   * @brief time difference between 2 consecutive frames.
+   * @details time difference between 2 consecutive frames.
+   */
   uint8_t frame_delay;
 } __attribute__((packed)) AnimationHeader;
 

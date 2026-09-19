@@ -20,6 +20,7 @@ class SerialComms {
     SerialComms();
     void begin(uint32_t baud_rate);
     void write(const char* data);
+    void writeBytes(const uint8_t* buffer, size_t size);
     void println(const char* data);
     void printf(const char* format, ...);
     void flush();

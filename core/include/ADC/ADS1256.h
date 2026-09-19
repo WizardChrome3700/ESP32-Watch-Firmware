@@ -2,7 +2,14 @@
 #define ADS1256_H
 
 #include "SPI.h"
-
+/**
+*@class ADS1256
+*@brief Driver apllication for the ADS1256 ADC chip, supporting SPI communication and configuration.
+*@details - Primary Func : Provides an interface for the ADS1256 ADC chip to enable configuration and data collection from its analog inputs.
+* - Ease of Integration : Designed as an Arduino IDE-compatible library/header for seamless integration into microcontroller projects.
+* - Configurable  Prmtrs : Allows customization of hardware settings, including adjustable Gain and Data Rate (sampling rate).
+* - Data Retrieval : Executes data readout operations, including software-based polling to monitor data readiness signals.
+ */
 class ADS1256 {
 public:
     // Constants for ADS1256 Configuration
@@ -121,9 +128,13 @@ private:
     // Software Polling Routine replacing physical DRDY wire 
     void waitDRDY() {
         uint8_t status = 1;
-        while ((status & 0x01) != 0) { // Keep polling until Bit 0 falls to 0 (Data Ready)
+        uint32_t timeout_counter = 0;
+        
+        // Timeout safely after ~10ms (5000 iterations * 2us) to prevent OS crashes
+        while ((status & 0x01) != 0 && timeout_counter < 5000) { 
             status = readRegister(REG_STATUS);
             delayMicroseconds(2); 
+            timeout_counter++;
         }
     }
 

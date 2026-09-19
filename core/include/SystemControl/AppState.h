@@ -38,23 +38,92 @@ void clearConsole() {
     // Serial.print("\033[2J\033[H"); 
 }
 
+/**
+ * @brief Data structure to hold global context for the OS states.
+ * @details It contains:-
+ * - pointer to RTC
+ * - pointer to AlarmManager
+ * - pointer to StorageManager
+ * - pointer to Time containing current time from RTC
+ * - pointer to the last alarm's time since epoch
+ * - pointer to display used
+ */
 struct AppContext {
+    /**
+     * @brief pointer to RTC
+     * @details pointer to an object of RTC class to obtain time and program alarms
+     */
     RTC_DS3231* rtc;
+    /**
+     * @brief pointer to AlarmManager
+     * @details pointer to an object of AlarmManager class to parse events stored in memory to produce alarm queue from where chronology of alarm programming is obtained.
+     */
     AlarmManager* alarm_manager;
+    /**
+     * @brief pointer to StorageManager
+     * @details pointer to an object of StorageManager class to obtain events stored in memory and modify the events storage to delete and add events.
+     */
     StorageManager* storage_manager;
+    /**
+     * @brief pointer to Time containing current time from RTC
+     * @details pointer to an object of Time class containing current time from RTC
+     */
     Time* currentTime;
+    /**
+     * @brief pointer to the last alarm's time since epoch
+     * @details pointer to the last alarm's time since epoch
+     */
     uint32_t* lastAlarmEpoch;
+    /**
+     * @brief pointer to display used
+     * @details pointer to SSD1306 display class being used to manage display buffer and draw/erase text and shapes.
+     * @note Create an abstract class for Display drivers from which other specific display drivers inherit to make integration seamless
+     */
     SSD1306* display;
 };
 
+/**
+ * @brief abstract class for all states of OS
+ * 
+ * @details Each OS state needs to have a pointer to the global OS context. They also need to implement the following functions:-
+ * - onEnter function which is invoked when we transition into a particular OS state.
+ * - onProgress function which is invoked when we are residing in the same OS state as before.
+ * - onExit function is invoked when we transition out of a particular OS state.
+ * - handleInput function that is invoked when a button press is detected that handles HID functionality and OS state transitions.
+ */
 class AppState {
     protected:
+        /**
+         * @brief holds global context for the OS states.
+         * @details holds global context for the OS states.
+         */
         AppContext* app_context;
     public:
+        /**
+         * @brief it is used when a state requests it's own exit function due to it finishing it's operational requirements
+         * @details it is used when a state requests it's own exit function due to it finishing it's operational requirements
+         */
+        bool requestExit = false;
         virtual ~AppState() {}
+        /**
+         * @brief function which is invoked when we transition into a particular OS state.
+         * @details function which is invoked when we transition into a particular OS state.
+         */
         virtual void onEnter() = 0;
+        /**
+         * @brief function which is invoked when we are residing in the same OS state as before.
+         * @details function which is invoked when we are residing in the same OS state as before.
+         */
         virtual void onProgress() = 0;
+        /**
+         * @brief function is invoked when we transition out of a particular OS state.
+         * @details function is invoked when we transition out of a particular OS state.
+         */
         virtual AppState* handleInput(uint8_t buttonPressed) = 0; 
+        /**
+         * @brief function that is invoked when a button press is detected that handles HID functionality and OS state transitions.
+         * @details function that is invoked when a button press is detected that handles HID functionality and OS state transitions.
+         */
         virtual void onExit() = 0;                
 };
 
