@@ -33,8 +33,8 @@ public:
         clearConsole();
         this->app_context->display->clearBuffer();
         // 1. Allocate a flat 4,096-byte page buffer in PSRAM
-        pageBuffer = (uint8_t*) heap_caps_malloc(4096, MALLOC_CAP_SPIRAM);
-        
+        // pageBuffer = (uint8_t*) heap_caps_malloc(4096, MALLOC_CAP_SPIRAM);
+        pageBuffer = (uint8_t*) heap_caps_malloc(4096, MALLOC_CAP_INTERNAL);        
         if (pageBuffer == nullptr) {
             ESP_LOGE("GESTURE", "PSRAM allocation failed!");
             return;
@@ -42,7 +42,6 @@ public:
 
         // 2. Open LittleFS File
         char filename[32];
-        sprintf(filename, "/%s_%lu.bin", currentLabel, convertDate2Epoch(this->app_context->currentTime));
         sprintf(filename, "/%s_%llu.bin", currentLabel, (uint64_t)esp_timer_get_time() / 1000000);
         recordFile = LittleFS.open(filename, "w");
 

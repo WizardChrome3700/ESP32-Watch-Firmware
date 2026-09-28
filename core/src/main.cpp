@@ -108,7 +108,7 @@ void task_core0_system(void *pvParameters) {
 extern "C" void app_main() {
     spi_mutex = xSemaphoreCreateMutex(); // 2. Instantiate it
     // 6. Create the queue before launching the tasks
-    adc_data_queue = xQueueCreate(100, sizeof(AdcFrame));
+    adc_data_queue = xQueueCreate(720, sizeof(AdcFrame));
 
     // 7. Launch the Core 1 Task
     // Stack size is 8192 bytes. Ensure this is large enough to hold the ADS1256 object.
