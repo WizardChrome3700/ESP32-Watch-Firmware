@@ -2,7 +2,14 @@
 #define ADS1256_H
 
 #include "SPI.h"
-
+/**
+*@class ADS1256
+*@brief Driver apllication for the ADS1256 ADC chip, supporting SPI communication and configuration.
+*@details - Primary Func : Provides an interface for the ADS1256 ADC chip to enable configuration and data collection from its analog inputs.
+* - Ease of Integration : Designed as an Arduino IDE-compatible library/header for seamless integration into microcontroller projects.
+* - Configurable  Prmtrs : Allows customization of hardware settings, including adjustable Gain and Data Rate (sampling rate).
+* - Data Retrieval : Executes data readout operations, including software-based polling to monitor data readiness signals.
+ */
 class ADS1256 {
 public:
     // Constants for ADS1256 Configuration
@@ -12,17 +19,19 @@ public:
 
     /**
      * 3. Constructor
-     * Configures the pins and properties without hardware DRDY or RESET pins.
+     * Configures the pins and properties, including the hardware DRDY and RESET pins.
      */
-    ADS1256(uint8_t pin_sck, uint8_t pin_mosi, uint8_t pin_miso, uint8_t pin_cs, 
-                     DataRate rate, PGA_Gain gain) {
+    ADS1256(uint8_t pin_sck, uint8_t pin_mosi, uint8_t pin_miso, uint8_t pin_cs,
+                     uint8_t pin_drdy, uint8_t pin_reset, DataRate rate, PGA_Gain gain) {
         _sck = pin_sck;
         _mosi = pin_mosi;
         _miso = pin_miso;
         _cs = pin_cs;
+        _drdy = pin_drdy;
+        _reset = pin_reset;
         _drate = rate;
         _gain = gain;
-        
+
         // Define safe SPI settings: max 2MHz for ADS1256 on Mode 1
         _spiSettings = SPISettings(1920000, MSBFIRST, SPI_MODE1);
         _spiSettings.spics_io_num = pin_cs;
@@ -35,6 +44,10 @@ public:
     bool init(bool enableBuffer) {
         pinMode(_cs, OUTPUT);
         digitalWrite(_cs, HIGH);
+
+        pinMode(_drdy, INPUT);
+        pinMode(_reset, OUTPUT);
+        digitalWrite(_reset, HIGH);
 
         // Hardware SPI setup on ESP32-C6 customized pins
         SPI.begin(_sck, _miso, _mosi, _cs);
@@ -98,7 +111,7 @@ public:
 
 private:
     // Pins and configurations
-    uint8_t _sck, _mosi, _miso, _cs;
+    uint8_t _sck, _mosi, _miso, _cs, _drdy, _reset;
     DataRate _drate;
     PGA_Gain _gain;
     SPISettings _spiSettings;
@@ -118,12 +131,16 @@ private:
     static const uint8_t REG_ADCON   = 0x02;
     static const uint8_t REG_DRATE   = 0x03;
 
-    // Software Polling Routine replacing physical DRDY wire 
+    // Waits on the physical DRDY pin (active LOW when a conversion is ready).
+    // NOTE: the STATUS register's bit 0 is BUFEN, not a data-ready flag, so it
+    // cannot be polled over SPI as a DRDY substitute.
     void waitDRDY() {
-        uint8_t status = 1;
-        while ((status & 0x01) != 0) { // Keep polling until Bit 0 falls to 0 (Data Ready)
-            status = readRegister(REG_STATUS);
-            delayMicroseconds(2); 
+        uint32_t startTime = (uint32_t)(esp_timer_get_time() / 1000);
+        while (digitalRead(_drdy) == HIGH) {
+            delayMicroseconds(2);
+            if ((uint32_t)(esp_timer_get_time() / 1000) - startTime > 150) {
+                break;
+            }
         }
     }
 
@@ -181,13 +198,12 @@ private:
         return value;
     }
 
+    // Physical pin pulse reset (the ADS1256 has no reliable SPI-only reset path).
     void resetDevice() {
-        SPI.beginTransaction(_spiSettings);
-        digitalWrite(_cs, LOW);
-        SPI.transfer(CMD_RESET);
-        delay(5); // t11 rest period
-        digitalWrite(_cs, HIGH);
-        SPI.endTransaction();
+        digitalWrite(_reset, LOW);
+        delay(5);
+        digitalWrite(_reset, HIGH);
+        delay(10);
     }
 };
 

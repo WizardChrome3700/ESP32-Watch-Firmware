@@ -8,6 +8,13 @@
 // Pin States
 #define LOW  0
 #define HIGH 1
+// Interrupt Trigger Modes
+#define RISING    0x01
+#define FALLING   0x02
+#define CHANGE    0x03
+
+// ESP32 supports interrupts on all GPIOs, so this simply returns the pin number
+#define digitalPinToInterrupt(pin) (pin)
 
 // Arduino-style Pin Modes
 typedef enum {
@@ -30,6 +37,7 @@ esp_err_t analogWrite(uint8_t pin, uint32_t duty);
 esp_err_t isValidPin(uint8_t pin);
 void delayMicroseconds(uint32_t us);
 void delay(uint32_t ms);
+esp_err_t attachInterrupt(uint8_t pin, void (*handler)(void), int mode);
 
 #ifdef __cplusplus
 }

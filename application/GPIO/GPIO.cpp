@@ -51,6 +51,7 @@ static pwm_track_t pwm_cache[MAX_PWM_CHANNELS] = {
 
 static uint8_t next_free_channel_idx = 0;
 static bool is_timer_configured = false;
+static bool isr_service_installed = false;
 
 esp_err_t pinMode(uint8_t pin, pin_mode_t mode) {
     // 1. Explicitly protect the forbidden/system hardware zones you highlighted
@@ -164,6 +165,39 @@ esp_err_t analogWrite(uint8_t pin, uint32_t duty) {
 
     status |= ledc_set_duty(LEDC_LOW_SPEED_MODE, target_channel, duty);
     status |= ledc_update_duty(LEDC_LOW_SPEED_MODE, target_channel);
+    return status;
+}
+
+esp_err_t attachInterrupt(uint8_t pin, void (*handler)(void), int mode) {
+    // 1. Verify it is a safe pin
+    esp_err_t status = isValidPin(pin);
+    if(status != ESP_OK) return status;
+
+    gpio_num_t real_gpio = (gpio_num_t)pin;
+
+    // 2. Map Arduino modes to ESP-IDF interrupt types
+    gpio_int_type_t intr_type = GPIO_INTR_DISABLE;
+    if (mode == RISING) intr_type = GPIO_INTR_POSEDGE;
+    else if (mode == FALLING) intr_type = GPIO_INTR_NEGEDGE;
+    else if (mode == CHANGE) intr_type = GPIO_INTR_ANYEDGE;
+
+    // 3. Configure the trigger edge for this specific pin
+    gpio_set_intr_type(real_gpio, intr_type);
+
+    // 4. Install the global ISR driver if it hasn't been done yet
+    if (!isr_service_installed) {
+        // ESP_INTR_FLAG_IRAM ensures the interrupt is kept in fast RAM
+        status = gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+        // ESP_ERR_INVALID_STATE just means another library already installed it, which is safe to ignore
+        if (status == ESP_OK || status == ESP_ERR_INVALID_STATE) {
+            isr_service_installed = true;
+        }
+    }
+
+    // 5. Attach the specific user function to this pin
+    // Note: We cast the void(*)(void) Arduino handler to the void(*)(void*) ESP-IDF type.
+    status = gpio_isr_handler_add(real_gpio, (gpio_isr_t)handler, NULL);
+    
     return status;
 }
 

@@ -5,6 +5,9 @@
 #define LOG_LEVEL_LOCAL ESP_LOG_VERBOSE
 #define LOG_TAG "MAIN"
 
+#include "Display/SSD1306.h"
+#include "ADC/ADS1256.h"
+
 class Main final
 {
 private:
@@ -12,9 +15,9 @@ private:
     SSD1306 display;
 
 public:
-    // Unified Shared SPI Bus: SCK=7, MOSI=15, MISO=14
-    // ADC CS=10. OLED CS=6, DC=5, RES=4.
-    Main() : adc(7, 15, 14, 10, ADS1256::DR_1000, ADS1256::GAIN_1), display(7, 15, 6, 5, 4) {}    
+    // Unified Shared SPI Bus: SCK=7, MOSI=15, MISO=16
+    // ADC CS=4. OLED CS=6, DC=5, RES=4.
+    Main() : adc(7, 15, 16, 4, ADS1256::DR_1000, ADS1256::GAIN_1), display(7, 15, 6, 5, 4) {}    
     esp_err_t setup(void);
     void loop(void);
     ~Main();

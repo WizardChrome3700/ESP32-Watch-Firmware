@@ -5,7 +5,7 @@
 // #include <pgmspace.h>
 
 /**
- * @class OLED
+ * @class SH1106
  * @brief Driver application header for SH1106 128x64 OLED display controller.
  * @details It is used to control the OLED display.
  * - It initialises the OLED display according to SOP in https://cdn.sparkfun.com/assets/2/6/8/9/7/1.3inch-SH1106-OLED_Datasheet.pdf.
@@ -114,7 +114,10 @@ class SH1106 {
 		vTaskDelay(pdMS_TO_TICKS(50));
 
 		// Initialize SPI
-		SPI.begin(sck, -1, din, cs);  // SCK=18, MOSI=19, CS=22
+		// MISO must match the ADS1256's pin (16) even though the display never reads it,
+		// since SPI_Controller::begin() only honors the bus pin config from whichever
+		// caller runs first and silently ignores it on later calls.
+		SPI.begin(sck, 16, din, cs);  // SCK=18, MOSI=19, CS=22
 		if (this->displayBuffer == nullptr) {
 			this->displayBuffer = (uint8_t*) spi_bus_dma_memory_alloc(SPI2_HOST, 132 * 8, 0);
 			memset(this->displayBuffer, 0, 132 * 8); // Clear canvas memory
