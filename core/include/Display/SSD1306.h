@@ -58,7 +58,10 @@ class SSD1306 {
     vTaskDelay(pdMS_TO_TICKS(50));
     
     // Initialize SPI
-    SPI.begin(sck, -1, din, cs);  
+    // MISO must match the ADS1256's pin (16) even though the display never reads it,
+    // since SPI_Controller::begin() only honors the bus pin config from whichever
+    // caller runs first and silently ignores it on later calls.
+    SPI.begin(sck, 16, din, cs);
     
     if (this->displayBuffer == nullptr) {
       // Changed from 132x8 (SH1106) to exactly 128x8 (SSD1306)

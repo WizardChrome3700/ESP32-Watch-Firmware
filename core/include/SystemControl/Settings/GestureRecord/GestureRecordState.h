@@ -63,21 +63,21 @@ public:
 
         //Pull from Queue until it is completely empty
         while (xQueueReceive(adc_data_queue, &incomingFrame, 0) == pdPASS) {
-                            Serial.printf("%lu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\r\n", 
-                            incomingFrame.timestamp, 
-                            incomingFrame.channels[0], incomingFrame.channels[1],
-                            incomingFrame.channels[2], incomingFrame.channels[3],
-                            incomingFrame.channels[4], incomingFrame.channels[5],
-                            incomingFrame.channels[6], incomingFrame.channels[7]);
+                            // Serial.printf("%lu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\r\n", 
+                            // incomingFrame.timestamp, 
+                            // incomingFrame.channels[0], incomingFrame.channels[1],
+                            // incomingFrame.channels[2], incomingFrame.channels[3],
+                            // incomingFrame.channels[4], incomingFrame.channels[5],
+                            // incomingFrame.channels[6], incomingFrame.channels[7]);
             
-            // if (bufferOffset + sizeof(AdcFrame) > 4096) {
-            //     if (recordFile) {
-            //         recordFile.write(pageBuffer, bufferOffset);
-            //     }
-            //     bufferOffset = 0; // Reset
-            // }
-            // memcpy(&pageBuffer[bufferOffset], &incomingFrame, sizeof(AdcFrame));
-            // bufferOffset += sizeof(AdcFrame); // 32
+            if (bufferOffset + sizeof(AdcFrame) > 4096) {
+                if (recordFile) {
+                    recordFile.write(pageBuffer, bufferOffset);
+                }
+                bufferOffset = 0; // Reset
+            }
+            memcpy(&pageBuffer[bufferOffset], &incomingFrame, sizeof(AdcFrame));
+            bufferOffset += sizeof(AdcFrame); // 32
         }
 
         // 3-Second Timeout Check

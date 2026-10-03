@@ -24,7 +24,7 @@ SemaphoreHandle_t spi_mutex = NULL;
 // =========================================================================
 void task_core1_adc(void *pvParameters) {
     // 1. Instantiate the ADC object
-    ADS1256 adc(7, 15, 14, 10, ADS1256::DR_30000, ADS1256::GAIN_1);
+    ADS1256 adc(7, 15, 16, 41, 40, 42, ADS1256::DR_30000, ADS1256::GAIN_1);
     adc.init(false);
 
     AdcFrame current_frame;
