@@ -20,6 +20,7 @@ private:
     uint16_t bufferOffset;      // Tracks byte position in the 4KB buffer
     uint32_t recordStartTime;   
     char currentLabel[10];
+    char filename[32]; // Buffer to hold the generated filename changes made in onEnter
 public:
     GestureRecordState(AppContext* app_context, const char* label) {
         this->app_context = app_context;
@@ -41,9 +42,9 @@ public:
         }
 
         // 2. Open LittleFS File
-        char filename[32];
-        sprintf(filename, "/%s_%llu.bin", currentLabel, (uint64_t)esp_timer_get_time() / 1000000);
-        recordFile = LittleFS.open(filename, "w");
+        //char filename[32];
+        sprintf(this->filename, "/%s_%llu.bin", currentLabel, (uint64_t)esp_timer_get_time() / 1000000);
+        recordFile = LittleFS.open(this->filename, "w");
 
         // 3. Update OLED
         this->app_context->display->clearBuffer();
@@ -60,17 +61,23 @@ public:
 
         AdcFrame incomingFrame;
 
-        // Pull from Queue until it is completely empty
+        //Pull from Queue until it is completely empty
         while (xQueueReceive(adc_data_queue, &incomingFrame, 0) == pdPASS) {
+                            Serial.printf("%lu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\r\n", 
+                            incomingFrame.timestamp, 
+                            incomingFrame.channels[0], incomingFrame.channels[1],
+                            incomingFrame.channels[2], incomingFrame.channels[3],
+                            incomingFrame.channels[4], incomingFrame.channels[5],
+                            incomingFrame.channels[6], incomingFrame.channels[7]);
             
-            if (bufferOffset + sizeof(AdcFrame) > 4096) {
-                if (recordFile) {
-                    recordFile.write(pageBuffer, bufferOffset);
-                }
-                bufferOffset = 0; // Reset
-            }
-            memcpy(&pageBuffer[bufferOffset], &incomingFrame, sizeof(AdcFrame));
-            bufferOffset += sizeof(AdcFrame); // 32
+            // if (bufferOffset + sizeof(AdcFrame) > 4096) {
+            //     if (recordFile) {
+            //         recordFile.write(pageBuffer, bufferOffset);
+            //     }
+            //     bufferOffset = 0; // Reset
+            // }
+            // memcpy(&pageBuffer[bufferOffset], &incomingFrame, sizeof(AdcFrame));
+            // bufferOffset += sizeof(AdcFrame); // 32
         }
 
         // 3-Second Timeout Check
@@ -104,6 +111,7 @@ public:
         if(recordFile) recordFile.close();
         if(pageBuffer != nullptr) heap_caps_free(pageBuffer);
         xQueueReset(adc_data_queue);
+
 
         Serial.println("\r\n--- LittleFS File List ---");
         File root = LittleFS.open("/", "r");

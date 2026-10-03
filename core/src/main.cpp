@@ -44,8 +44,11 @@ void task_core1_adc(void *pvParameters) {
 
             // 4. Stamp the frame with the elapsed delta time
             current_frame.timestamp = (uint32_t)esp_timer_get_time() - start_time_us;
+            for(int i=0; i<8; i++) {
+                current_frame.channels[i] = -999; 
+            }
 
-            if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            if (xSemaphoreTake(spi_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
                 // Sweep all 8 channels sequentially
                 for(uint8_t i = 0; i < 8; i++) {
                     switch (i) {
@@ -59,6 +62,7 @@ void task_core1_adc(void *pvParameters) {
                         case 7: current_frame.channels[i] = adc.readSingleEnded(ADS1256::AIN7); break;
                         default: break;
                     }
+                    
                 }
                 xSemaphoreGive(spi_mutex);
             }
